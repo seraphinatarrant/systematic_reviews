@@ -1,0 +1,1 @@
+python query.py -max=500 -label="Abattoir" -search="(Livestock OR ruminants OR sheep OR goats OR cattle OR cow OR ram OR ewe OR bull OR calf OR lamb OR kid) AND Ethiopia AND (Abattoir OR slaughter*) AND (prevalence OR incidence)"
