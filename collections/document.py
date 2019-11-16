@@ -44,6 +44,9 @@ class Document(object):
     def __str__(self):
         return self.title
 
+    def get_id(self):
+        return self._id
+
     def get_csv_fields(self):
         """for formatting information to write to a csv"""
         pass
