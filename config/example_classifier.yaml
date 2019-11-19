@@ -1,0 +1,7 @@
+strategy:
+  name: maxent
+  labels:
+    {
+      "exclude": 0,
+      "include": 1
+    }

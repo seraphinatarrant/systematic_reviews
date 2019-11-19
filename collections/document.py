@@ -15,7 +15,6 @@ class FileType(Enum):
     html = 1
     text = 3
 
-
 class Document(object):
     """stores information for a single document"""
 
@@ -32,6 +31,10 @@ class Document(object):
         self.year = 0
         self.reference_identifier = ""
         self.authors = []
+
+        # classification
+        self.gold_label = None
+        self.predicted_label = None
 
         # text information
         self.title = None
@@ -58,8 +61,16 @@ class Document(object):
     def add_to_collection(self, collection_id: str):
         pass
 
+    def set_gold_label(self, label: int):
+        self.gold_label = label
+
+    def set_predicted_label(self, label: int):
+        self.predicted_label = label
+
 
 class TextField(object):
+
+
     def __init__(self, text:str, text_type: TextType):
         self.text = text
         self.text_type = text_type
