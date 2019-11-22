@@ -1,8 +1,8 @@
 import sys
-from typing import TypeVar, Type, List, Dict
 from abc import ABCMeta, abstractmethod
+from typing import TypeVar, Type, List, Dict
 
-from ..collections.document import Document
+from library_collections.document import Document
 
 T = TypeVar("T", bound="ClassificationStrategy")
 
