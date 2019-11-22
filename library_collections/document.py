@@ -2,6 +2,7 @@ import sys
 import json
 import random
 import string
+import pickle
 from collections import namedtuple
 from enum import Enum
 from typing import List, Type
@@ -23,6 +24,10 @@ class FileType(Enum):
     pdf = 0
     html = 1
     text = 3
+
+class Label(Enum):
+    exclude = 0
+    include = 1
 
 ### Other Globalish things
 Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
@@ -114,10 +119,10 @@ class Document(object):
     def add_to_collection(self, collection_id: str):
         pass
 
-    def set_gold_label(self, label: int):
+    def set_gold_label(self, label: Label):
         self.gold_label = label
 
-    def set_predicted_label(self, label: int):
+    def set_predicted_label(self, label: Label):
         self.predicted_label = label
 
     @classmethod
@@ -182,6 +187,14 @@ class TextField(object):
 
 if __name__ == "__main__":
     test_scraped_output = "scrapers/google_scholar/output/output.json"
+    output = "output.pkl"
     new_docs = Document.from_json(test_scraped_output, batch=True)
     print(len(new_docs))
     [print(doc) for doc in new_docs]
+    with open(output, "wb") as fout:
+        pickle.dump(new_docs,fout)
+    with open(output, "rb") as fin:
+        read_docs = pickle.load(fin)
+    print(len(new_docs))
+    [print(doc) for doc in new_docs]
+
