@@ -1,36 +1,20 @@
-# from .grab import Grabber
+from .search import Query
 
 import os
 import json
 import tqdm
-import scholarly # Google Scholar
-# import wos # Web of Science
-
-class Query:
-    def __init__(self, label: str, search_phrase: str, date_range: tuple):
-        self.label = label
-        self.search_phrase = search_phrase
-        self.start_date, self.end_date = date_range
-
-    def search(self):
-        raise NotImplementedError
-
-    def search_with_year(self):
-        raise NotImplementedError
-
-    def parse_results(self, query_results, log_folder, log=True, n=500):
-        raise NotImplementedError
+import scholarly
 
 
 class GoogleScholar(Query):
-    def __init__(self, label: str, search_phrase: str, date_range: tuple):
+    def __init__(self, label: string, search_phrase: string, date_range: tuple):
         super().__init__(label, search_phrase, date_range)
 
     def search(self):
         return scholarly.search_pubs_query(self.search_phrase)
 
     def search_with_year(self):
-        custom_url = f"/scholar?q={self.search_phrase}&hl=en&as_sdt=0%2C5&as_ylo={self.start_date}&as_yhi={self.end_date}"
+        custom_url = f"/scholar?q={self.search_phrase}&hl=en&as_sdt=0%2C5&as_ylo={self.start}&as_yhi={self.end}"
         return scholarly.search_pubs_custom_url(custom_url)
 
     def parse_results(self, query_results, log_folder, log=True, n=500):
