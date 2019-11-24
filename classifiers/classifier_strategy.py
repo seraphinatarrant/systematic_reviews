@@ -1,14 +1,14 @@
 import sys
-from typing import TypeVar, Type, List, Dict
 from abc import ABCMeta, abstractmethod
+from typing import TypeVar, Type, List, Dict
 
-from ..collections.document import Document
+from library_collections.document import Document, Label
 
-T = TypeVar("T", bound="ClassificationStrategy")
+T = TypeVar("T", bound="ClassifierStrategy")
 
 
-class Classifier(metaclass=ABCMeta):
-    """An Abstract Classifier class, designed to take Documents as input and output labels"""
+class ClassifierStrategy(metaclass=ABCMeta):
+    """An Abstract ClassifierStrategy class, designed to take Documents as input and output labels"""
 
     __name_to_strategy = dict()
     CONFIG_STRATEGY_NAME_KEY = "name"
@@ -22,7 +22,7 @@ class Classifier(metaclass=ABCMeta):
 
     @classmethod
     def register_strategy(cls, scls):
-        """Adds the subclasses to the mapping where the key is `Classifier.name` and the
+        """Adds the subclasses to the mapping where the key is `ClassifierStrategy.name` and the
         value is the class.
 
         :param scls: the subclass to register
@@ -36,12 +36,12 @@ class Classifier(metaclass=ABCMeta):
         """Reads the classification strategy from a dictionary, performs validation"""
 
         # Get the name of the strategy to be used for classification from the strategy configuration.
-        strategy_name = config.get(Classifier.CONFIG_STRATEGY_NAME_KEY)
+        strategy_name = config.get(ClassifierStrategy.CONFIG_STRATEGY_NAME_KEY)
         if strategy_name is None:
-            raise ValueError("No strategy config entry for '{0}'".format(Classifier.CONFIG_STRATEGY_NAME_KEY))
+            raise ValueError("No strategy config entry for '{0}'".format(ClassifierStrategy.CONFIG_STRATEGY_NAME_KEY))
 
         # Get the class name of the strategy to be used, raise an exception if the strategy name is unknown.
-        strategy = Classifier.__name_to_strategy.get(strategy_name.lower())
+        strategy = ClassifierStrategy.__name_to_strategy.get(strategy_name.lower())
         if strategy is None:
             raise ValueError("No strategy name '{0}'".format(strategy_name))
 
@@ -54,11 +54,14 @@ class Classifier(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def classify_documents(self, items: List[Document]) -> List[int]:
+    def train_classifier(self, items: List[Document]):
+
+    @abstractmethod
+    def classify_documents(self, items: List[Document]) -> List[Label]:
         pass
 
     @abstractmethod
-    def classify_raw_data(self, items: List[str]) -> List[int]:
+    def classify_raw_data(self, items: List[str]) -> List[Label]:
         pass
 
     def classify(self, items:List) -> List[int]:

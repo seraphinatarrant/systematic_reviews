@@ -1,5 +1,7 @@
+documents: "output.pkl"
 strategy:
-  name: maxent
+  name: svm
+  vector_type: tf-idf
   labels:
     {
       "exclude": 0,

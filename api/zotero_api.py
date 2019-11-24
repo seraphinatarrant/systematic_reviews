@@ -1,12 +1,13 @@
 """PSA this is very much in a TODO state as all API kinks have not yet been worked out"""
 
 import argparse
-import yaml
-from typing import List
+from typing import List, Type
 
+import yaml
 from pyzotero import zotero
 
-from ..collections.document import Document
+from library_collections.document import Document
+
 
 def setup_argparse():
     p = argparse.ArgumentParser()
