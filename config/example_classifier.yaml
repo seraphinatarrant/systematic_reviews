@@ -1,4 +1,9 @@
-documents: "output.pkl"
+corpus:
+  train: "output.pkl"
+  #test:
+model:
+  save_loc: "test.pt"
+  #pretrained: "test.pt"
 strategy:
   name: svm
   vector_type: tf-idf
