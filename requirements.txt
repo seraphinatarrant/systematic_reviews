@@ -4,3 +4,5 @@ pyzotero
 git+https://github.com/OrganicIrradiation/scholarly.git
 tqdm
 requests
+lxml
+bs4
