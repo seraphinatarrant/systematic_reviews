@@ -30,7 +30,7 @@ if __name__ == "__main__":
     classifier = ClassifierStrategy.from_config(config)
 
     print("Reading document corpus...")
-    corpus = Corpus(train_docs=train_docs)
+    corpus = Corpus(train_docs=train_docs, test_docs=train_docs)
     #corpus = Corpus.from_config(config)
 
     if args.train:
@@ -41,4 +41,6 @@ if __name__ == "__main__":
     if bool(corpus.test):
         print("Classifying test corpus...")
         # TODO add tqdm for progress
-        classifier.classify(corpus.test)
+        predictions = classifier.classify(corpus.test)
+        for doc, label_num in zip(corpus.test, predictions):
+            print("{} was given label: {}".format(doc, Label(label_num).name))
