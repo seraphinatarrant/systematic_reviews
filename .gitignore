@@ -1,3 +1,9 @@
+/.idea/
+/scrapers/.ipynb_checkpoints/
+/scrapers/testing.ipynb
+/scrapers/pdfs/
+/scrapers/test_urls/
+
 __pycache__
 **/__pycache__
 **/**/__pycache__

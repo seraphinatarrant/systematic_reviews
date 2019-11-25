@@ -1,3 +1,6 @@
 python==3.7
 PyYAML
 pyzotero
+scholarly
+tqdm
+requests
