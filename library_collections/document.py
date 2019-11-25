@@ -1,13 +1,12 @@
 import sys
 import json
-import random
-import string
 import pickle
 from collections import namedtuple
 from enum import Enum
 from typing import List, Type
 
 from api.citoid_api import get_citation_data
+from utils.general_utils import make_id, bool_partition, save_pkl, load_pkl
 
 
 class TextType(Enum):
@@ -33,7 +32,6 @@ class Label(Enum):
 Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
 
 def make_authors(creators_list, text: str, split_on: str="and") -> List[dict]:
-    #TODO move to utils
     """tries to set author from JSON, else extracts author information from raw text, returns list of dicts"""
     # Author info is of format: Hamsho, A and Tesfamarym, G and Megersa, G and Megersa, M
     if creators_list:
@@ -53,11 +51,6 @@ def make_authors(creators_list, text: str, split_on: str="and") -> List[dict]:
         all_authors.append(Author(last, first, "author")._asdict())
 
     return all_authors
-
-def make_id():
-    id_length = 10 # we can change this to be longer based on volume of crawl
-    alphanumeric = string.ascii_lowercase + string.digits
-    return ''.join(random.choices(alphanumeric, k=id_length))
 
 class Document(object):
     """stores information for a single document"""
@@ -122,8 +115,27 @@ class Document(object):
     def set_gold_label(self, label: Label):
         self.gold_label = label
 
+    @classmethod
+    def set_gold_labels(cls, docs, labels: List[Label]):
+        for doc, label in zip(docs, labels):
+            doc.gold_label = label
+
     def set_predicted_label(self, label: Label):
         self.predicted_label = label
+
+    @classmethod
+    def set_predicted_labels(cls, docs, labels: List[Label]):
+        for doc, label in zip(docs, labels):
+            doc.predicted_label = label
+
+    @classmethod
+    def filter_gold_labels(cls, docs):
+        gold_labels, no_labels = bool_partition(lambda x: x.gold_label, docs)
+        if len(no_labels):
+            print("{} docs (out of {} total) have no gold labels and are not included...".format(
+                len(list(no_labels)), len(docs)), file=sys.stderr)
+            print("\n".join(map(str,no_labels)))
+        return list(gold_labels)
 
     @classmethod
     def from_json(cls, filepath: str, batch: bool=False) -> List:
@@ -191,10 +203,8 @@ if __name__ == "__main__":
     new_docs = Document.from_json(test_scraped_output, batch=True)
     print(len(new_docs))
     [print(doc) for doc in new_docs]
-    with open(output, "wb") as fout:
-        pickle.dump(new_docs,fout)
-    with open(output, "rb") as fin:
-        read_docs = pickle.load(fin)
-    print(len(new_docs))
-    [print(doc) for doc in new_docs]
+    save_pkl(new_docs,output)
+    read_docs = load_pkl(output)
+    print(len(read_docs))
+    [print(doc) for doc in read_docs]
 

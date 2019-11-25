@@ -5,10 +5,11 @@
 /scrapers/test_urls/
 
 __pycache__
-**/__pycache__
+**/__pycache__/**
 **/**/__pycache__
 **/**/**/__pycache__
 
+#.pyc
 *.pt
 *.pkl
 .idea/

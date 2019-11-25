@@ -6,14 +6,14 @@ from library_collections.document import Document, Label
 
 T = TypeVar("T", bound="ClassifierStrategy")
 
-
 class ClassifierStrategy(metaclass=ABCMeta):
     """An Abstract ClassifierStrategy class, designed to take Documents as input and output labels"""
 
     __name_to_strategy = dict()
+
     CONFIG_STRATEGY_NAME_KEY = "name"
-    label2idx = None # set by config
-    idx2label = None
+    # label2idx = None # set by config
+    # idx2label = None
 
     @property
     @abstractmethod
@@ -36,7 +36,7 @@ class ClassifierStrategy(metaclass=ABCMeta):
         """Reads the classification strategy from a dictionary, performs validation"""
 
         # Get the name of the strategy to be used for classification from the strategy configuration.
-        strategy_name = config.get(ClassifierStrategy.CONFIG_STRATEGY_NAME_KEY)
+        strategy_name = config["strategy"].get(ClassifierStrategy.CONFIG_STRATEGY_NAME_KEY)
         if strategy_name is None:
             raise ValueError("No strategy config entry for '{0}'".format(ClassifierStrategy.CONFIG_STRATEGY_NAME_KEY))
 
@@ -54,7 +54,8 @@ class ClassifierStrategy(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def train_classifier(self, items: List[Document]):
+    def train_classifier(self, items: List[Document], test_items: List[Document]=None):
+        pass
 
     @abstractmethod
     def classify_documents(self, items: List[Document]) -> List[Label]:
@@ -64,7 +65,7 @@ class ClassifierStrategy(metaclass=ABCMeta):
     def classify_raw_data(self, items: List[str]) -> List[Label]:
         pass
 
-    def classify(self, items:List) -> List[int]:
+    def classify(self, items:List) -> List[Label]:
         """router for classification strategy: takes a list of objects and returns a list of
         integers corresponding to labels"""
         first_object = items[0]
