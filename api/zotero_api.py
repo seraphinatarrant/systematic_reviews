@@ -2,11 +2,10 @@
 
 import argparse
 from typing import List, Type
-
-import yaml
 from pyzotero import zotero
 
 from library_collections.document import Document
+from utils.general_utils import read_yaml_config
 
 
 def setup_argparse():
@@ -14,9 +13,6 @@ def setup_argparse():
     p.add_argument('-c', dest='config_file', default='../config/zotero.yaml',
                    help='a yaml config containing necessary API information')
     return p.parse_args()
-
-def read_yaml_config(config_file):
-    return yaml.load(open(config_file), Loader=yaml.FullLoader)
 
 def create_collections(z_library, names:List[str]):
     collections = []
