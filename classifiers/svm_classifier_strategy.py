@@ -53,7 +53,7 @@ class SVMClassifier(ClassifierStrategy):
             with open(pretrained_model, "rb") as fin:
                 return pickle.load(fin)
         else:
-            model_name = config["model"].get("path","model.pt")
+            model_name = config["model"].get("save_loc","model.pt")
             # Vectors
             vector_type = config.get(SVMClassifier.VECTOR_TYPE_KEY, "tf-idf")
             if vector_type == "tf-idf":
