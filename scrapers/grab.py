@@ -1,13 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
-import tqdm
 import json
 import os
 
 class Grabber:
-    def __init__(self, url: str, save_location):
+    def __init__(self, url: str, save_location, bib_info: dict, label: str):
         self.save_location = save_location
         self.url = url
+        self.bib_info = bib_info
+        self.label = label
 
         self.grabber = self.choose_grabber()
 
@@ -56,12 +57,23 @@ class BaseGrabber:
             return None
 
     def write_pdf(self, pdf_data: bytes, filename: str):
-        with open(f'{self.save_location}/{filename}', 'wb') as out:
-            out.write(pdf_data)
+        if pdf_data:
+            with open(f'{self.save_location}/{filename}', 'wb') as out:
+                out.write(pdf_data)
+        else:
+            self.log()
 
     def fix_url(self, url):
         return url
 
+    def log(self):
+        os.makedirs('logs', exist_ok=True)
+
+        with open(f'logs/failed_to_grab_{self.label}', 'a') as out:
+            json.dump(self.bib_info, out)
+            out.write('='*70)
+
+        print(f'Failed to get PDF: {self.url}')
 
 class BiomedcentralGrabber(BaseGrabber):
     """
