@@ -4,7 +4,7 @@ import json
 import os
 
 class Grabber:
-    def __init__(self, url: str, save_location, bib_info: dict, label: str):
+    def __init__(self, save_location, bib_info: dict, label: str, url: str):
         self.save_location = save_location
         self.url = url
         self.bib_info = bib_info
@@ -13,22 +13,28 @@ class Grabber:
         self.grabber = self.choose_grabber()
 
     def choose_grabber(self):
-        if "biomedcentral.com/" in self.url:
-            return BiomedcentralGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if "springer.com/" in self.url:
-            return SpringerGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if "sciencedirect.com/" in self.url:
-            return ScienceDirectGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if "academia.edu/" in self.url:
-            return AcademiaEduGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if "wiley.com/" in self.url:
-            return WileyGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if "ncbi.nlm.nih.gov/" in self.url:
-            return NIHGrabber(self.save_location, self.bib_info, self.label, self.url)
-        if 'scielo.org.za/' in self.url:
-            return ScieloGrabber(self.save_location, self.bib_info, self.label, self.url)
 
-        return BaseGrabber(self.save_location, self.bib_info, self.label, self.url)
+        args = dict(save_location=self.save_location,
+                    bib_info=self.bib_info,
+                    label=self.label,
+                    url=self.url)
+
+        if "biomedcentral.com/" in self.url:
+            return BiomedcentralGrabber(**args)
+        if "springer.com/" in self.url:
+            return SpringerGrabber(**args)
+        if "sciencedirect.com/" in self.url:
+            return ScienceDirectGrabber(**args)
+        if "academia.edu/" in self.url:
+            return AcademiaEduGrabber(**args)
+        if "wiley.com/" in self.url:
+            return WileyGrabber(**args)
+        if "ncbi.nlm.nih.gov/" in self.url:
+            return NIHGrabber(**args)
+        if 'scielo.org.za/' in self.url:
+            return ScieloGrabber(**args)
+
+        return BaseGrabber(**args)
 
     def run(self, filename):
         pdf_data = self.grabber.get_pdf()
