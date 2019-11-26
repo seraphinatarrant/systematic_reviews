@@ -2,7 +2,6 @@ import os
 import json
 import tqdm
 import scholarly  # Google Scholar
-from . import grab
 
 
 class Query:
@@ -66,12 +65,12 @@ class GoogleScholar(Query):
                     break
 
         if save:
-            print(f"Saving results to: {self.results_folder}/{self.label}")
+            print(f"Saving results to: {self.results_folder}/{self.label}.json")
             os.makedirs(self.results_folder, exist_ok=True)
 
-            with open(f"{self.results_folder}/{self.label}", 'a') as o:
+            with open(f"{self.results_folder}/{self.label}.json", 'a') as o:
                 json.dump(all_dicts, o, indent=5)
-
+                o.write('\n')
         return all_dicts
 
 

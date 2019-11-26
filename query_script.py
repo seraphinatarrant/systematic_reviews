@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('-max', type=int, help='Max number of hits to return')
     parser.add_argument('-label', type=str, help='Label for search query')
     parser.add_argument('-search', type=str, help='Search terms to use')
-    parser.add_argument('--range', nargs='+', type=int, default=(2015, 2019), help='Limit results to papers from these years, inclusive. Format: YYYY-YYYY')
+    parser.add_argument('-range', nargs='+', type=int, default=[2015, 2019], help='Limit results to papers from these years, inclusive. Format: YYYY-YYYY')
 
     args = parser.parse_args()
 
@@ -33,9 +33,12 @@ if __name__ == '__main__':
 
     for e, r_dict in enumerate(searcher.processed_results, 1):
         if r_dict['bib'].get('eprint'):
-            grabber = grab.Grabber(url=r_dict['bib']['eprint'], save_location=args.path)
+            grabber = grab.Grabber(url=r_dict['bib']['eprint'],
+                                   save_location=args.path,
+                                   bib_info=r_dict,
+                                   label=args.label)
+
             grabber.run(filename=f"{e}.pdf")
 
-    print('\tDone!')
+    print('\tDone!\n')
 
-    print('')

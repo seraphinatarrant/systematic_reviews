@@ -3,6 +3,8 @@ scikit-learn
 python==3.7
 PyYAML
 pyzotero
-scholarly
+git+https://github.com/OrganicIrradiation/scholarly.git
 tqdm
 requests
+lxml
+bs4
