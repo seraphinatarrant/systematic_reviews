@@ -1,9 +1,9 @@
 import sys
 import json
-import pickle
+import os
 from collections import namedtuple
 from enum import Enum
-from typing import List, Type
+from typing import List, Type, Union
 
 from api.citoid_api import get_citation_data
 from utils.general_utils import make_id, bool_partition, save_pkl, load_pkl
@@ -116,9 +116,15 @@ class Document(object):
         self.gold_label = label
 
     @classmethod
-    def set_gold_labels(cls, docs, labels: List[Label]):
-        for doc, label in zip(docs, labels):
-            doc.gold_label = label
+    def set_gold_labels(cls, docs, labels: Union[List[Label] or Label], one_label=False):
+        """takes docs and one label (to apply to all) or many (to zip with docs)"""
+        assert not(type(labels)==List and one_label), "can either set all docs to one label or provide a list of labels, not both"
+        if one_label:
+            for doc in docs:
+                doc.gold_label = labels
+        else:
+            for doc, label in zip(docs, labels):
+                doc.gold_label = label
 
     def set_predicted_label(self, label: Label):
         self.predicted_label = label
@@ -143,36 +149,42 @@ class Document(object):
         with open(filepath, "r") as fin:
             data = json.load(fin)
         documents, failed = [], 0
+        basedir, filename = os.path.split(filepath)
         if batch:
             print("Processing {} docs...".format(len(data), file=sys.stderr))
             for doc in data:
-                new_doc = Document.doc_from_json(doc)
+                new_doc = Document.doc_from_json(doc, dir=basedir)
                 if new_doc:
                     documents.append(new_doc)
                 else:
                     failed += 1
                     # TODO write failure data to log
         else:
-            new_doc = Document.doc_from_json(data)
+            new_doc = Document.doc_from_json(data, dir=basedir)
             if new_doc:
-                documents = [Document.doc_from_json(data)]
+                documents = [new_doc]
             else:
                 failed += 1
                 # TODO write failure data to log
-
+        print("{} documents failed to retrieve metadata and were skipped, "
+              "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100))
         return documents if len(documents) else None
 
     @classmethod
-    def doc_from_json(cls, data: dict):
+    def doc_from_json(cls, data: dict, dir: str):
         resource_url = data["bib"]["url"]
         citation_data = get_citation_data(resource_url) # this is a dict
         if not citation_data:
             return None
+        filename = data.get("saved_pdf_name", "")
+        filepath = os.path.join(dir, filename) if filename else ""
         new_doc = Document(source=citation_data.get("itemType", ""),
                            file_type=FileType.pdf,
-                           url=resource_url)
-        new_doc.title = data["bib"]["title"]
-        new_doc.year = data["bib"]["year"]
+                           url=resource_url, filepath=filepath)
+        title = data["bib"].get("title")
+        year = data["bib"].get("year")
+        new_doc.title = title if title else citation_data.get("title")
+        new_doc.year = year if year else citation_data.get("date") #.split("-")[0] # in format "2014-10-01" #TODO make this nicer - can't just split since may be empty
         new_doc.authors = make_authors(citation_data.get("creators", []), data["bib"]["author"])
         new_doc.doi = citation_data.get("DOI", "")
         new_doc.issn = citation_data.get("ISSN", "")
