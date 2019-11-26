@@ -64,7 +64,7 @@ class SVMClassifier(ClassifierStrategy):
                 sys.exit("unsupported vector type {}".format(vector_type))
             # Classifier params
             # TODO add whatever needs to be changeable to the config
-            classifier = SGDClassifier(max_iter=5) # This is just dummy
+            classifier = SGDClassifier(max_iter=100) # This is just dummy
 
             return cls(vectorizer, classifier, path=model_name)
 
