@@ -1,7 +1,7 @@
 import pickle
 from typing import List
 from library_collections.document import Document
-from utils.general_utils import load_pkl
+from utils.general_utils import load_pkl, save_pkl
 
 
 
@@ -21,3 +21,6 @@ class Corpus(object):
             new_corpus.test = load_pkl(test)
 
         return new_corpus
+
+    def save(self, path):
+        save_pkl(self, path)
