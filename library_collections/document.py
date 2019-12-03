@@ -112,6 +112,15 @@ class Document(object):
     def add_to_collection(self, collection_id: str):
         pass
 
+    def gold_eq_predict(self) -> bool:
+        if not self.gold_label or not self.predicted_label:
+            print("cannot compare labels since one or both are not set", file=sys.stderr)
+            return False
+        if self.gold_label == self.predicted_label:
+            return True
+        else:
+            return False
+
     def set_gold_label(self, label: Label):
         self.gold_label = label
 
@@ -144,7 +153,7 @@ class Document(object):
         return list(gold_labels)
 
     @classmethod
-    def from_json(cls, filepath: str, batch: bool=False) -> List:
+    def from_json(cls, filepath: str, batch: bool=False, verbose: bool=False) -> List:
         """takes a Google Scholar JSON file, returns a Document or list of Documents"""
         with open(filepath, "r") as fin:
             data = json.load(fin)
@@ -153,31 +162,34 @@ class Document(object):
         if batch:
             print("Processing {} docs...".format(len(data), file=sys.stderr))
             for doc in data:
-                new_doc = Document.doc_from_json(doc, dir=basedir)
+                new_doc = Document.doc_from_json(doc, basedir=basedir, verbose=verbose)
                 if new_doc:
                     documents.append(new_doc)
                 else:
                     failed += 1
                     # TODO write failure data to log
         else:
-            new_doc = Document.doc_from_json(data, dir=basedir)
+            new_doc = Document.doc_from_json(data, basedir=basedir, verbose=verbose)
             if new_doc:
                 documents = [new_doc]
             else:
                 failed += 1
                 # TODO write failure data to log
         print("{} documents failed to retrieve metadata and were skipped, "
-              "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100))
+              "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100),
+              file=sys.stderr)
         return documents if len(documents) else None
 
     @classmethod
-    def doc_from_json(cls, data: dict, dir: str):
+    def doc_from_json(cls, data: dict, basedir: str, verbose=False ):
         resource_url = data["bib"]["url"]
+        filename = data.get("saved_pdf_name", "")
         citation_data = get_citation_data(resource_url) # this is a dict
         if not citation_data:
+            if verbose:
+                print("Failed - URL: {} PDF: {}".format(resource_url,filename))
             return None
-        filename = data.get("saved_pdf_name", "")
-        filepath = os.path.join(dir, filename) if filename else ""
+        filepath = os.path.join(basedir, filename) if filename else ""
         new_doc = Document(source=citation_data.get("itemType", ""),
                            file_type=FileType.pdf,
                            url=resource_url, filepath=filepath)

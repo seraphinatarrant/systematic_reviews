@@ -32,9 +32,9 @@ if __name__ == "__main__":
         assert config["model"].get("pretrained", False), "if not training a new classifier, require a pretrained one to be specified. Did you mean to use the arg --train?"
 
     print("Reading documents")
-    include_docs = Document.from_json(config["corpus"].get("include"), batch=True)
+    include_docs = Document.from_json(config["corpus"].get("include"), batch=True, verbose=args.verbose)
     Document.set_gold_labels(include_docs, Label.include, one_label=True)
-    exclude_docs = Document.from_json(config["corpus"].get("exclude"), batch=True)
+    exclude_docs = Document.from_json(config["corpus"].get("exclude"), batch=True, verbose=args.verbose)
     Document.set_gold_labels(exclude_docs, Label.exclude, one_label=True)
 
     train_docs, test_docs = split_data(include_docs+exclude_docs)
@@ -59,6 +59,15 @@ if __name__ == "__main__":
         predictions = classifier.classify(corpus.test, has_labels=True)
 
         if args.verbose:
+            print("Printing Results:")
             for doc, label_num in zip(corpus.test, predictions):
-                # TODO have this also print out gold labels. ALSO have a way to print out the errors.
                 print("{} was given label: {}.".format(doc, Label(label_num).name))
+            print("-"*89)
+            print("Printing Errors:")
+            incorrect = filter(lambda d: d.gold_eq_predict, corpus.test)
+            print("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
+            for doc in corpus.test:
+                print("doc: {} id: {} predicted_label: {} gold_label: {}".format(
+                    doc, doc.get_id(), doc.predicted_label, doc.gold_label))
+
+
