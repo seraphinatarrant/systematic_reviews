@@ -1,10 +1,23 @@
 corpus:
   # PDFs referenced by JSON are assumed in same directory
+  load_saved: "corpus.pkl" # load an existing corpus
   include: "PDFs/include/include_new.json"
   exclude: "PDFs/exclude/exclude_new.json"
+  save_loc: "corpus.pkl"
+  test_labels: False # whether or not the test data has labels (for printing accuracy on predictions)
 model:
-  save_loc: "new_test.pt" # if training a new model
-  #pretrained: "model.pt" # if loading a pretrained model
+  #save_loc: "new_test.pt" # if training a new model
+  pretrained: "new_test.pt" # if loading a pretrained model
 strategy:
-  name: svm
-  vector_type: tf-idf
+  # for clarification, see sklearn docs, particularly for SVM options: https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+  name: svm # svm is the only one supported at present
+  vector_type: tf-idf #
+  max_iter: 1000 # truncates early stopping even if
+  loss: log # log, hinge, squared_hinge, modified_huber, perceptron
+  regularizer: l2 # l2, l1, elasticnet
+  lr: optimal # optimal, adaptive
+  early_stopping: True # bool
+  balance_classes: True # bool, if yes adjusts class weights to account for imbalance
+classify:
+  confidence_threshold: True # bool
+  threshold: 2.5 # float, maximum acceptable distance from decision boundary. Ignored if confidence_threshold is False

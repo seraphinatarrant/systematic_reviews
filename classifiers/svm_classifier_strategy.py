@@ -32,6 +32,25 @@ def print_prediction_accuracy(predictions: List[int], gold_labels: List[int]):
                                         target_names=[l.name for l in Label]))
     print(metrics.confusion_matrix(gold_labels, predictions, labels=[l.name for l in Label]))
 
+
+def convert_confidences_to_labels(predictions, threshold) -> List:
+    """takes a set of scores and converts them to binary labels depending on a threshold"""
+    labels, num_below_thresh = [], 0
+    for p in predictions:
+        if abs(p) < threshold:
+            labels.append(None)
+            num_below_thresh += 1
+            continue
+        label = 1 if p > 0 else 0
+        labels.append(label)
+    print("{}/{} documents were below the confidence threshold of {}".format(
+        num_below_thresh,
+        len(predictions),
+        threshold),
+        file=sys.stderr)
+    return labels
+
+
 @ClassifierStrategy.register_strategy
 class SVMClassifier(ClassifierStrategy):
 
@@ -42,29 +61,43 @@ class SVMClassifier(ClassifierStrategy):
         self.pipeline = None # this will be set once trained
 
     name = "svm"
+    PRETRAINED_KEY = "pretrained"
+    SAVE_LOC_KEY = "save_loc"
 
     VECTOR_TYPE_KEY = "vector_type"
-    # TODO add other config options
+    LOSS_KEY = "loss"
+    REG_KEY = "regularizer"
+    LR_KEY = "lr"
+    STOP_KEY = "early_stopping"
+    BALANCE_KEY = "balance_classes"
+    MAX_ITER_KEY = "max_iter"
 
     @classmethod
     def from_strategy_config(cls, config: Dict):
-        pretrained_model = config["model"].get("pretrained", False)
+        pretrained_model = config["model"].get(SVMClassifier.PRETRAINED_KEY, False)
         if pretrained_model:
             with open(pretrained_model, "rb") as fin:
                 return pickle.load(fin)
         else:
-            model_name = config["model"].get("save_loc","model.pt")
-            # Vectors
-            vector_type = config.get(SVMClassifier.VECTOR_TYPE_KEY, "tf-idf")
+            model_name = config["model"].get(SVMClassifier.SAVE_LOC_KEY,"model.pt")
+            param_config = config["strategy"]
+            # Vector types
+            vector_type = param_config.get(SVMClassifier.VECTOR_TYPE_KEY, "tf-idf")
             if vector_type == "tf-idf":
                 vectorizer = TfidfVectorizer()
             elif vector_type == "bow":
                 vectorizer = CountVectorizer()
             else:
                 sys.exit("unsupported vector type {}".format(vector_type))
-            # Classifier params
-            # TODO add whatever needs to be changeable to the config
-            classifier = SGDClassifier(max_iter=100) # This is just dummy
+            # Classifier params, including defaults
+            class_weight = "balanced" if param_config.get(SVMClassifier.BALANCE_KEY) else None
+            classifier = SGDClassifier(loss=param_config.get(SVMClassifier.LOSS_KEY, "hinge"),
+                                       penalty=param_config.get(SVMClassifier.REG_KEY, "l2"),
+                                       learning_rate=param_config.get(SVMClassifier.LR_KEY, "optimal"),
+                                       early_stopping=param_config.get(SVMClassifier.STOP_KEY, True),
+                                       class_weight=class_weight,
+                                       max_iter=param_config.get(SVMClassifier.MAX_ITER_KEY, 1000)
+                                       )
 
             return cls(vectorizer, classifier, path=model_name)
 
@@ -77,6 +110,8 @@ class SVMClassifier(ClassifierStrategy):
             ("classifier", self.classifier)
         ])
         # classify
+        print("Training classifier with params:", file=sys.stderr)
+        print(self.classifier.get_params(), file=sys.stderr)
         classifier_pipeline.fit(text_data, text_labels)
         self.pipeline = classifier_pipeline
         print("Saving classifier to {}".format(self.path), file=sys.stderr)
@@ -86,13 +121,20 @@ class SVMClassifier(ClassifierStrategy):
         if test_items:
             self.classify_documents(test_items, has_labels=True)
 
-    def classify_documents(self, items: List[Document], has_labels=False) -> List[Label]:
+    def classify_documents(self, items: List[Document], has_labels=False,
+                           confidence=False, threshold: float=None) -> List[Label]:
         """classifies documents. If has labels, will also print accuracy"""
         # make training data -> should work if gold labels are not set, that should be a boolean in the function
         texts, labels = format_data(items, has_labels)
         # classify
         assert self.pipeline, "Pipeline does not exist, classifier needs to be trained with .train_classifier()"
-        predictions = self.pipeline.predict(texts)
+        if confidence:
+            # Signed distance of that sample to the decision boundary
+            # returns confidence where < 0 is label 0 and > 0 is label 1.
+            predictions = self.pipeline.decision_function(texts)
+            predictions = convert_confidences_to_labels(predictions, threshold)
+        else:
+            predictions = self.pipeline.predict(texts)
         if has_labels:
             print_prediction_accuracy(predictions, labels)
         # set predicted label attributes on documents
