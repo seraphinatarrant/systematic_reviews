@@ -1,10 +1,13 @@
 corpus:
+  from_zotero: True # if True uses zotero collections, and expects a zotero config
+  zotero_config: "config/zotero.yaml"
+  save_loc: "corpus.pkl"
+  test_labels: True # whether or not the test data has labels (for printing accuracy on predictions)
+  # If loading from existing Corpus or crawl JSON
+  #load_saved: "corpus.pkl"
   # PDFs referenced by JSON are assumed in same directory
-  load_saved: "corpus.pkl" # load an existing corpus
   include: "PDFs/include/include_new.json"
   exclude: "PDFs/exclude/exclude_new.json"
-  save_loc: "corpus.pkl"
-  test_labels: False # whether or not the test data has labels (for printing accuracy on predictions)
 model:
   #save_loc: "new_test.pt" # if training a new model
   pretrained: "new_test.pt" # if loading a pretrained model
