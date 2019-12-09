@@ -1,7 +1,7 @@
 """PSA this is very much in a TODO state as all API kinks have not yet been worked out"""
 
 import argparse
-from typing import List, Type
+from typing import List, Type, Dict
 from pyzotero import zotero
 
 from library_collections.document import Document
@@ -14,12 +14,26 @@ def setup_argparse():
                    help='a yaml config containing necessary API information')
     return p.parse_args()
 
+def auth_zotero_library(config: Dict):
+    """returns a zotero library object"""
+    auth = config["auth"]
+    return zotero.Zotero(auth["library_id"], auth["library_type"], auth["api_key"])
+
+def get_collection_IDs(collections: List[Dict]) -> List[str]:
+    return [col["key"] for col in collections]
+
 def create_collections(z_library, names:List[str]):
     collections = []
     for name in names:
         collections.append({"name": name})
 
     z_library.create_collections(collections)
+
+def fetch_attachment_paths(z_library, parent_doc: Dict):
+    parent_id = parent_doc["data"]["key"]
+    child = z_library.children(parent_id)[0]
+
+    return child["data"].get("path")
 
 def upload_attachments(z_library, docs: List[Document]):
     print("Uploading attachments for {} Documents...".format(len(docs)))
@@ -75,6 +89,8 @@ if __name__ == "__main__":
             collection_key = item["key"]
 
     all_collection_docs = z_library.collection_items_top(collection_key)
+    sample = all_collection_docs[0]
+    children = z_library.children(sample["data"]["key"])
     for item in all_collection_docs:
         metadata_pretty_print(item)
 
