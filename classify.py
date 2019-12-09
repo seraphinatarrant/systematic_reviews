@@ -1,10 +1,13 @@
 import argparse
 import sys
+from itertools import chain
 
 from classifiers import ClassifierStrategy, SVMClassifier
 from library_collections.document import Document, Label
+from library_collections.lib_collection import Collection
 from utils.corpus import Corpus
 from utils.general_utils import read_yaml_config, split_data, load_pkl
+from api.zotero_api import auth_zotero_library
 
 
 def setup_argparse():
@@ -27,24 +30,47 @@ if __name__ == "__main__":
 
     print("Reading config...")
     config = read_yaml_config(args.config_file)
+    print("Config settings:")
+    print(config)
 
+    ### Validation
     if not args.train:
         assert config["model"].get("pretrained", False), "if not training a new classifier, require a pretrained one to be specified. Did you mean to use the arg --train?"
 
-    print("Reading documents")
-    include_docs = Document.from_json(config["corpus"].get("include"), batch=True, verbose=args.verbose)
-    Document.set_gold_labels(include_docs, Label.include, one_label=True)
-    exclude_docs = Document.from_json(config["corpus"].get("exclude"), batch=True, verbose=args.verbose)
-    Document.set_gold_labels(exclude_docs, Label.exclude, one_label=True)
 
-    train_docs, test_docs = split_data(include_docs+exclude_docs)
-    corpus = Corpus(train_docs=train_docs, test_docs=test_docs)
-    corpus.save("corpus.pkl") # temporary test thing TODO something in config
+    if config["corpus"].get("load_saved"):
+        print("Loading pre-saved corpus...", file=sys.stderr)
+        corpus = load_pkl(config["corpus"].get("load_saved"))
+    else:
+        if config["corpus"]["from_zotero"]:
+            print("Loading documents from Zotero...")
+            z_config_loc = config["corpus"].get("zotero_config")
+            assert z_config_loc, "requires a zotero config location"
+            collections = Collection.from_zotero(auth_zotero_library(read_yaml_config(z_config_loc)))
+            all_docs = list(chain.from_iterable([col.documents for col in collections]))
+        else:
+            print("Reading documents")
+            include_docs = Document.from_json(config["corpus"].get("include"), batch=True, verbose=args.verbose)
+            Document.set_gold_labels(include_docs, Label.include, one_label=True)
+            exclude_docs = Document.from_json(config["corpus"].get("exclude"), batch=True, verbose=args.verbose)
+            Document.set_gold_labels(exclude_docs, Label.exclude, one_label=True)
+            all_docs = include_docs+exclude_docs
 
-    #corpus = load_pkl("corpus.pkl")
+        # filter out docs with no: 1) text or abstract data 2) gold labels (only if training)
+        if args.train:
+            #all_docs = Document.filter_fields(all_docs, [Document.gold_label, Document.abstract])
+            all_docs = Document.filter_gold_labels(all_docs)
+            all_docs = Document.filter_failed_parses(all_docs)
+
+
+        train_docs, test_docs = split_data(all_docs)
+        corpus = Corpus(train_docs=train_docs, test_docs=test_docs)
+        save_loc = config["corpus"].get(SVMClassifier.SAVE_LOC_KEY, "corpus.pkl")
+        corpus.save(save_loc)
+
     print("{} Training and {} Test Documents".format(len(corpus.train), len(corpus.test)), file=sys.stderr)
 
-    print("Reading classifier...")
+    print("Reading classifier...", file=sys.stderr)
     classifier = ClassifierStrategy.from_config(config)
 
     if args.train:
@@ -56,7 +82,11 @@ if __name__ == "__main__":
         print("Classifying test corpus...")
         # TODO add tqdm for progress
         # TODO also make has_labels be set intelligently (based on config probs, or something)
-        predictions = classifier.classify(corpus.test, has_labels=True)
+        predictions = classifier.classify(corpus.test,
+                                          has_labels=config["corpus"].get("test_labels"),
+                                          confidence=config["classify"]["confidence_threshold"],
+                                          thresh=config["classify"]["threshold"]
+                                          )
 
         if args.verbose:
             print("Printing Results:")

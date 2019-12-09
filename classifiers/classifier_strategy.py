@@ -65,12 +65,12 @@ class ClassifierStrategy(metaclass=ABCMeta):
     def classify_raw_data(self, items: List[str]) -> List[Label]:
         pass
 
-    def classify(self, items:List, has_labels:bool=False) -> List[Label]:
+    def classify(self, items:List, has_labels:bool=False, confidence=False, thresh: float=0) -> List[Label]:
         """router for classification strategy: takes a list of objects and returns a list Labels objects.
         has_labels controls whether to print accuracy information"""
         first_object = items[0]
         if type(first_object) == Document:
-            return self.classify_documents(items, has_labels)
+            return self.classify_documents(items, has_labels, confidence, thresh)
         else: # assume raw text
             print("Classifying (probably) raw input. First sample:\n {}".format(first_object), file=sys.stderr)
             return self.classify_raw_data(items, has_labels)
