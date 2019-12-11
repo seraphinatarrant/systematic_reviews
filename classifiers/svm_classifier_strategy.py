@@ -29,8 +29,8 @@ def print_prediction_accuracy(predictions: List[int], gold_labels: List[int]):
     print("-" * 89)
     print("Classification Report:")
     print(metrics.classification_report(gold_labels, predictions,
-                                        target_names=[l.name for l in Label]))
-    print(metrics.confusion_matrix(gold_labels, predictions, labels=[l.name for l in Label]))
+                                        target_names=[l.name for l in Label]+[]))
+    print(metrics.confusion_matrix(gold_labels, predictions, labels=[l.value for l in Label]))
 
 
 def convert_confidences_to_labels(predictions, threshold) -> List:
@@ -38,7 +38,7 @@ def convert_confidences_to_labels(predictions, threshold) -> List:
     labels, num_below_thresh = [], 0
     for p in predictions:
         if abs(p) < threshold:
-            labels.append(None)
+            labels.append(-1)
             num_below_thresh += 1
             continue
         label = 1 if p > 0 else 0
