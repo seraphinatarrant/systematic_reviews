@@ -21,6 +21,3 @@ strategy:
   lr: optimal # optimal, adaptive
   early_stopping: True # bool
   balance_classes: True # bool, if yes adjusts class weights to account for imbalance
-classify:
-  confidence_threshold: True # bool
-  threshold: 2.5 # float, maximum acceptable distance from decision boundary. Ignored if confidence_threshold is False
