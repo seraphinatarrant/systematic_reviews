@@ -7,7 +7,7 @@ from library_collections.document import Document, Label
 from library_collections.lib_collection import Collection
 from utils.corpus import Corpus
 from utils.general_utils import read_yaml_config, split_data, load_pkl
-from api.zotero_api import auth_zotero_library
+from api.zotero_api import auth_zotero_library, remove_duplicates
 
 
 def setup_argparse():
@@ -46,7 +46,10 @@ if __name__ == "__main__":
             print("Loading documents from Zotero...")
             z_config_loc = config["corpus"].get("zotero_config")
             assert z_config_loc, "requires a zotero config location"
-            collections = Collection.from_zotero(auth_zotero_library(read_yaml_config(z_config_loc)))
+            z_library = auth_zotero_library(read_yaml_config(z_config_loc))
+            # print("Cleaning Zotero duplicates first...")
+            # remove_duplicates(z_library)
+            collections = Collection.from_zotero(z_library)
             all_docs = list(chain.from_iterable([col.documents for col in collections]))
         else:
             print("Reading documents")
@@ -84,8 +87,8 @@ if __name__ == "__main__":
         # TODO also make has_labels be set intelligently (based on config probs, or something)
         predictions = classifier.classify(corpus.test,
                                           has_labels=config["corpus"].get("test_labels"),
-                                          confidence=config["classify"]["confidence_threshold"],
-                                          thresh=config["classify"]["threshold"]
+                                          confidence=config.get("classify", {}).get("confidence_threshold"),
+                                          thresh=config.get("classify", {}).get("threshold")
                                           )
 
         if args.verbose:
