@@ -29,6 +29,11 @@ class Label(Enum):
     exclude = 0
     include = 1
 
+class Publisher(Enum):
+    WebOfScience = 0
+    GoogleScholar = 1
+    SCOPUS = 2
+
 ### Other Globalish things
 Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
 
