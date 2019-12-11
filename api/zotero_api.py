@@ -2,6 +2,8 @@
 
 import argparse
 from typing import List, Type, Dict
+
+import sys
 from pyzotero import zotero
 
 from library_collections.document import Document
@@ -29,6 +31,9 @@ def create_collections(z_library, names:List[str]):
 
     z_library.create_collections(collections)
 
+def get_all_docs(z_library, collection_id: str) -> List[dict]:
+    return z_library.everything(z_library.collection_items_top(collection_id))
+
 def fetch_attachment_paths(z_library, parent_doc: Dict):
     parent_id = parent_doc["data"]["key"]
     child = z_library.children(parent_id)[0]
@@ -51,7 +56,7 @@ def create_new_docs(z_library, docs: List[Document], add_attachments=False):
         # set a title
         template["title"] = doc.title
         #TODO include other information extracted from pdf here
-        all_templates.add(template)
+        all_templates.append(template)
 
     response = z_library.create_items(all_templates)
     doc_ids = response["key"] # TODO unsure if this is correct or nested (this is the format if create one item at a time)
@@ -59,6 +64,32 @@ def create_new_docs(z_library, docs: List[Document], add_attachments=False):
 
     if add_attachments:
         upload_attachments(z_library, docs)
+
+def remove_duplicates(z_library):
+    """deletes duplicate documents found in Zotero. Conservatively, based on DOI and ISSN
+    and abstract with no normalisation etc"""
+    dois, issns, abstracts = set(), set(), set()
+    collections = z_library.collections()
+    collection_ids =  get_collection_IDs(collections)
+    for col_id in collection_ids: # don't erase duplicates ACROSS collections
+        all_docs = get_all_docs(z_library, col_id)
+        deleted = 0
+        for doc in all_docs:
+            data = doc["data"]
+            doi, issn, abstract = data.get("DOI"), data.get("ISSN"), data.get("abstractNote")
+            if doi in dois or issn in issns or abstract in abstracts:
+                z_library.delete_item(doc)
+                deleted += 1
+            else: # check that exist so don't add empty strings
+                if doi:
+                    dois.add(doi)
+                if issn:
+                    issns.add(issn)
+                if abstract:
+                    abstracts.add(abstract)
+        print("{} docs were duplicates in collection {}".format(deleted, col_id), file=sys.stderr)
+        #TODO write these documents to logs
+
 
 def metadata_pretty_print(item):
     template = "Title: {}\n" \
@@ -81,6 +112,9 @@ if __name__ == "__main__":
     z_library = zotero.Zotero(auth["library_id"], auth["library_type"], auth["api_key"])
     all_documents = z_library.everything(z_library.top()) # gets around small API limit for what is returned
     all_collections = z_library.collections()
+
+    remove_duplicates(z_library)
+    sys.exit("done")
 
     # example print data from all items in a collection
     collection_i_want = "WOS"
