@@ -30,7 +30,6 @@ if __name__ == "__main__":
     script_name = os.path.basename(sys.argv[0])
     log_path = os.path.join(args.log_dir,"{}: {}: {}".
                                          format(script_name, args.loglevel, str(datetime.now())))
-    print(log_path)
     logging.basicConfig(filename=log_path,
                         format="%(levelname)s:%(message)s",
                         level=getattr(logging, args.loglevel))
