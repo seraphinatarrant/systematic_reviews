@@ -155,12 +155,14 @@ class Document(object):
                 doc.gold_label = label
 
     def set_predicted_label(self, label: Label):
+        if type(label) != Label:
+            label = Label(label)
         self.predicted_label = label
 
     @classmethod
     def set_predicted_labels(cls, docs, labels: List[Label]):
         for doc, label in zip(docs, labels):
-            doc.predicted_label = label
+            doc.set_predicted_label(label)
 
     @classmethod
     def filter_gold_labels(cls, docs):

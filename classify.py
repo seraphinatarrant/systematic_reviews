@@ -1,8 +1,10 @@
 import argparse
 import sys
-from itertools import chain
+from itertools import chain, filterfalse
 import logging
 from datetime import datetime
+
+import os
 
 from classifiers import ClassifierStrategy, SVMClassifier
 from library_collections.document import Document, Label
@@ -19,12 +21,17 @@ def setup_argparse():
     p.add_argument('-t', '--train', action='store_true', help='trains a new classifier')
     p.add_argument('-l', '--log', dest='loglevel', choices=["INFO", "DEBUG", "WARNING", "ERROR",
                                                             "CRITICAL"])
+    p.add_argument('--log_dir', default="logs/", help="location to store log files")
     return p.parse_args()
 
 if __name__ == "__main__":
     args = setup_argparse()
     logging.getLogger('matplotlib.font_manager').disabled = True
-    logging.basicConfig(filename="{}: {}: {}".format(sys.argv[0], args.loglevel, str(datetime.now())),
+    script_name = os.path.basename(sys.argv[0])
+    log_path = os.path.join(args.log_dir,"{}: {}: {}".
+                                         format(script_name, args.loglevel, str(datetime.now())))
+    print(log_path)
+    logging.basicConfig(filename=log_path,
                         format="%(levelname)s:%(message)s",
                         level=getattr(logging, args.loglevel))
 
@@ -99,9 +106,9 @@ if __name__ == "__main__":
             logging.debug("{} was given label: {}.".format(doc, Label(label_num).name))
         logging.debug("-"*89)
         logging.debug("Printing Errors:")
-        incorrect = filter(lambda d: d.gold_eq_predict, corpus.test)
+        incorrect = filterfalse(lambda d: d.gold_eq_predict, corpus.test)
         logging.debug("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
-        for doc in corpus.test:
+        for doc in incorrect:
             logging.debug("doc: {} id: {} predicted_label: {} gold_label: {}".format(
                 doc, doc.get_id(), doc.predicted_label, doc.gold_label))
 
