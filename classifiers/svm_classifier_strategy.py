@@ -7,6 +7,7 @@ from sklearn import metrics
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
 
 from .classifier_strategy import ClassifierStrategy
 from library_collections.document import Document, Label
@@ -116,6 +117,8 @@ class SVMClassifier(ClassifierStrategy):
         self.pipeline = classifier_pipeline
         print("Saving classifier to {}".format(self.path), file=sys.stderr)
         save_pkl(self, self.path)
+        # visualise features
+        self.plot_coefficients()
         # print out test accuracy if exists
         # TODO make this logged
         if test_items:
@@ -144,3 +147,20 @@ class SVMClassifier(ClassifierStrategy):
 
     def classify_raw_data(self, items: List[str]) -> List[int]:
         pass
+
+
+    def plot_coefficients(self, top_features=50):
+        coef = self.classifier.coef_.ravel()
+        feature_names = self.vectorizer.get_feature_names()
+        top_positive_coefficients = np.argsort(coef)[-top_features:]
+        top_negative_coefficients = np.argsort(coef)[:top_features]
+        top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+        # create plot
+        plt.figure(figsize=(15, 5))
+        colors = ["red" if c < 0 else "blue" for c in coef[top_coefficients]]
+        plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
+        feature_names = np.array(feature_names)
+        plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names[top_coefficients], rotation=60,
+                   ha="right")
+        plt.tick_params(axis="x", which="major", pad=3, labelsize=8) # Note that labelsize 8pt is set for 50 features. (so it all fits without overlapping)
+        plt.savefig("feature_plot.png", bbox_inches="tight")
