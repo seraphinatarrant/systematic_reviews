@@ -1,6 +1,8 @@
 import argparse
 import sys
 from itertools import chain
+import logging
+from datetime import datetime
 
 from classifiers import ClassifierStrategy, SVMClassifier
 from library_collections.document import Document, Label
@@ -15,23 +17,25 @@ def setup_argparse():
     p.add_argument('-c', dest='config_file', default='config/example_classifier.yaml',
                    help='a yaml config containing necessary API information')
     p.add_argument('-t', '--train', action='store_true', help='trains a new classifier')
-    p.add_argument('-v', '--verbose', dest='verbose', action='store_true',
-                   help='verbose mode (prints more debug and info type stuff!)')
-    #p.add_argument('-d', dest='output_dir', default='outputs/', help='dir to write outputs to')
+    p.add_argument('-l', '--log', dest='loglevel', choices=["INFO", "DEBUG", "WARNING", "ERROR",
+                                                            "CRITICAL"])
     return p.parse_args()
 
 if __name__ == "__main__":
     args = setup_argparse()
+    logging.getLogger('matplotlib.font_manager').disabled = True
+    logging.basicConfig(filename="{}: {}: {}".format(sys.argv[0], args.loglevel, str(datetime.now())),
+                        format="%(levelname)s:%(message)s",
+                        level=getattr(logging, args.loglevel))
 
     # Silly test cases
     # test_scraped_output = "scrapers/google_scholar/output/output.json"
     # train_docs = Document.from_json(test_scraped_output, batch=True)
     # Document.set_gold_labels(train_docs, [Label.exclude, Label.exclude, Label.include, Label.include])
 
-    print("Reading config...")
+    logging.info("Reading config...")
     config = read_yaml_config(args.config_file)
-    print("Config settings:")
-    print(config)
+    logging.info("Config settings:\n{}".format(config))
 
     ### Validation
     if not args.train:
@@ -39,11 +43,11 @@ if __name__ == "__main__":
 
 
     if config["corpus"].get("load_saved"):
-        print("Loading pre-saved corpus...", file=sys.stderr)
+        logging.info("Loading pre-saved corpus...")
         corpus = load_pkl(config["corpus"].get("load_saved"))
     else:
         if config["corpus"]["from_zotero"]:
-            print("Loading documents from Zotero...")
+            logging.info("Loading documents from Zotero...")
             z_config_loc = config["corpus"].get("zotero_config")
             assert z_config_loc, "requires a zotero config location"
             z_library = auth_zotero_library(read_yaml_config(z_config_loc))
@@ -52,7 +56,7 @@ if __name__ == "__main__":
             collections = Collection.from_zotero(z_library)
             all_docs = list(chain.from_iterable([col.documents for col in collections]))
         else:
-            print("Reading documents")
+            logging.info("Reading documents")
             include_docs = Document.from_json(config["corpus"].get("include"), batch=True, verbose=args.verbose)
             Document.set_gold_labels(include_docs, Label.include, one_label=True)
             exclude_docs = Document.from_json(config["corpus"].get("exclude"), batch=True, verbose=args.verbose)
@@ -71,9 +75,9 @@ if __name__ == "__main__":
         save_loc = config["corpus"].get(SVMClassifier.SAVE_LOC_KEY, "corpus.pkl")
         corpus.save(save_loc)
 
-    print("{} Training and {} Test Documents".format(len(corpus.train), len(corpus.test)), file=sys.stderr)
+    logging.info("{} Training and {} Test Documents".format(len(corpus.train), len(corpus.test)))
 
-    print("Reading classifier...", file=sys.stderr)
+    logging.info("Reading classifier...")
     classifier = ClassifierStrategy.from_config(config)
 
     if args.train:
@@ -82,25 +86,23 @@ if __name__ == "__main__":
         classifier.train_classifier(corpus.train)
 
     if bool(corpus.test):
-        print("Classifying test corpus...")
-        # TODO add tqdm for progress
-        # TODO also make has_labels be set intelligently (based on config probs, or something)
+        logging.info("Classifying test corpus of {} documents...".format(len(corpus.test)))
         predictions = classifier.classify(corpus.test,
                                           has_labels=config["corpus"].get("test_labels"),
                                           confidence=config.get("classify", {}).get("confidence_threshold"),
                                           thresh=config.get("classify", {}).get("threshold")
                                           )
 
-        if args.verbose:
-            print("Printing Results:")
-            for doc, label_num in zip(corpus.test, predictions):
-                print("{} was given label: {}.".format(doc, Label(label_num).name))
-            print("-"*89)
-            print("Printing Errors:")
-            incorrect = filter(lambda d: d.gold_eq_predict, corpus.test)
-            print("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
-            for doc in corpus.test:
-                print("doc: {} id: {} predicted_label: {} gold_label: {}".format(
-                    doc, doc.get_id(), doc.predicted_label, doc.gold_label))
+
+        logging.debug("Printing Results:")
+        for doc, label_num in zip(corpus.test, predictions):
+            logging.debug("{} was given label: {}.".format(doc, Label(label_num).name))
+        logging.debug("-"*89)
+        logging.debug("Printing Errors:")
+        incorrect = filter(lambda d: d.gold_eq_predict, corpus.test)
+        logging.debug("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
+        for doc in corpus.test:
+            logging.debug("doc: {} id: {} predicted_label: {} gold_label: {}".format(
+                doc, doc.get_id(), doc.predicted_label, doc.gold_label))
 
 
