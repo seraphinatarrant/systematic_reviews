@@ -1,3 +1,4 @@
+import logging
 import sys
 import json
 import os
@@ -52,8 +53,7 @@ def make_authors(creators_list, text: str="", split_on: str="and") -> List[dict]
         try:
             last, first = entry.split(",")
         except:
-            print("{} could not be split into first and last name. Entire entry will be entered in last.",
-                  file=sys.stderr)
+            logging.warning("{} could not be split into first and last name. Entire entry will be entered in last.")
             last, first = entry.strip(), ''
 
         all_authors.append(Author(last, first, "author")._asdict())
@@ -133,7 +133,7 @@ class Document(object):
 
     def gold_eq_predict(self) -> bool:
         if not self.gold_label or not self.predicted_label:
-            print("cannot compare labels since one or both are not set", file=sys.stderr)
+            logging.warning("cannot compare labels since one or both are not set")
             return False
         if self.gold_label == self.predicted_label:
             return True
@@ -168,9 +168,9 @@ class Document(object):
     def filter_gold_labels(cls, docs):
         gold_labels, no_labels = bool_partition(lambda x: x.gold_label, docs)
         if len(no_labels):
-            print("{} docs (out of {} total) have no gold labels and are not included...".format(
-                len(list(no_labels)), len(docs)), file=sys.stderr)
-            print("\n".join(map(str,no_labels)))
+            logging.info("{} docs (out of {} total) have no gold labels and are not included...".format(
+                len(list(no_labels)), len(docs)))
+            logging.info("\n".join(map(str,no_labels)))
         return list(gold_labels)
 
     # @classmethod # Todo make it so I can cleanly pass class attributes into this method
@@ -181,7 +181,7 @@ class Document(object):
     #         docs = has_field
     #         if len(lacks_field):
     #             print("Field {} is not set for {} docs (out of {} total) and will not be included."
-    #                 .format(field, len(list(lacks_field)), len(docs)), file=sys.stderr)
+    #                 .format(field, len(list(lacks_field)), len(docs)))
     #             print("\n".join(map(str, lacks_field)))
     #     return docs
 
@@ -190,9 +190,9 @@ class Document(object):
         # operate on the assumption that if an abstract is missing, failed to parse doc
         abstract, no_abstract = bool_partition(lambda x: x.abstract, docs)
         if len(no_abstract):
-            print("{} docs (out of {} total) have no abstracts and are not included...".format(
-                len(list(no_abstract)), len(docs)), file=sys.stderr)
-            print("\n".join(map(str,no_abstract)))
+            logging.info("{} docs (out of {} total) have no abstracts and are not included...".format(
+                len(list(no_abstract)), len(docs)))
+            logging.info("\n".join(map(str,no_abstract)))
         return list(abstract)
 
     @classmethod
@@ -210,41 +210,38 @@ class Document(object):
         return new_doc
 
     @classmethod
-    def from_json(cls, filepath: str, batch: bool=False, verbose: bool=False) -> List:
+    def from_json(cls, filepath: str, batch: bool=False) -> List:
         """takes a Google Scholar JSON file, returns a Document or list of Documents"""
         with open(filepath, "r") as fin:
             data = json.load(fin)
         documents, failed = [], 0
         basedir, filename = os.path.split(filepath)
         if batch:
-            print("Processing {} docs...".format(len(data), file=sys.stderr))
+            logging.info("Processing {} docs...".format(len(data)))
             for doc in data:
-                new_doc = Document.doc_from_json(doc, basedir=basedir, verbose=verbose)
+                new_doc = Document.doc_from_json(doc, basedir=basedir)
                 if new_doc:
                     documents.append(new_doc)
                 else:
                     failed += 1
-                    # TODO write failure data to log
+                    logging.debug("Failed to create doc from data: {}".format(doc))
         else:
-            new_doc = Document.doc_from_json(data, basedir=basedir, verbose=verbose)
+            new_doc = Document.doc_from_json(data, basedir=basedir)
             if new_doc:
                 documents = [new_doc]
             else:
-                failed += 1
-                # TODO write failure data to log
-        print("{} documents failed to retrieve metadata and were skipped, "
-              "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100),
-              file=sys.stderr)
+                logging.debug("Failed to create doc from data: {}".format(data))
+        logging.info("{} documents failed to retrieve metadata and were skipped, "
+              "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100))
         return documents if len(documents) else None
 
     @classmethod
-    def doc_from_json(cls, data: dict, basedir: str, verbose=False ):
+    def doc_from_json(cls, data: dict, basedir: str):
         resource_url = data["bib"]["url"]
         filename = data.get("saved_pdf_name", "")
         citation_data = get_citation_data(resource_url) # this is a dict
         if not citation_data:
-            if verbose:
-                print("Failed - URL: {} PDF: {}".format(resource_url,filename))
+            logging.debug("Failed - URL: {} PDF: {}".format(resource_url,filename))
             return None
         filepath = os.path.join(basedir, filename) if filename else ""
         new_doc = Document(source=citation_data.get("itemType", ""),

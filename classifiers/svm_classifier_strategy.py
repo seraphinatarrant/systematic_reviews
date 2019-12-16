@@ -1,8 +1,11 @@
 import pickle
 import sys
 from typing import Dict, List, Tuple
+import logging
+from datetime import datetime
 
 import numpy as np
+import os
 from sklearn import metrics
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.linear_model import SGDClassifier
@@ -26,12 +29,13 @@ def format_data(items: List[Document], has_labels=True) -> Tuple[List[str], List
 
 def print_prediction_accuracy(predictions: List[int], gold_labels: List[int]):
     accuracy = np.mean(predictions == gold_labels)
-    print("Classifier Accuracy: {}".format(accuracy))
-    print("-" * 89)
-    print("Classification Report:")
-    print(metrics.classification_report(gold_labels, predictions,
+    logging.info("Classifier Accuracy: {}".format(accuracy))
+    logging.info("-" * 89)
+    logging.info("Classification Report:")
+    logging.info(metrics.classification_report(gold_labels, predictions,
                                         target_names=[l.name for l in Label]+[]))
-    print(metrics.confusion_matrix(gold_labels, predictions, labels=[l.value for l in Label]))
+    logging.info("Confusion Matrix:")
+    logging.info(metrics.confusion_matrix(gold_labels, predictions, labels=[l.value for l in Label]))
 
 
 def convert_confidences_to_labels(predictions, threshold) -> List:
@@ -44,11 +48,10 @@ def convert_confidences_to_labels(predictions, threshold) -> List:
             continue
         label = 1 if p > 0 else 0
         labels.append(label)
-    print("{}/{} documents were below the confidence threshold of {}".format(
+    logging.info("{}/{} documents were below the confidence threshold of {}".format(
         num_below_thresh,
         len(predictions),
-        threshold),
-        file=sys.stderr)
+        threshold))
     return labels
 
 
@@ -111,16 +114,15 @@ class SVMClassifier(ClassifierStrategy):
             ("classifier", self.classifier)
         ])
         # classify
-        print("Training classifier with params:", file=sys.stderr)
-        print(self.classifier.get_params(), file=sys.stderr)
+        logging.info("Training classifier with params:")
+        logging.info(self.classifier.get_params())
         classifier_pipeline.fit(text_data, text_labels)
         self.pipeline = classifier_pipeline
-        print("Saving classifier to {}".format(self.path), file=sys.stderr)
+        logging.info("Saving classifier to {}".format(self.path))
         save_pkl(self, self.path)
         # visualise features
         self.plot_coefficients()
         # print out test accuracy if exists
-        # TODO make this logged
         if test_items:
             self.classify_documents(test_items, has_labels=True)
 
@@ -150,6 +152,9 @@ class SVMClassifier(ClassifierStrategy):
 
 
     def plot_coefficients(self, top_features=50):
+        plot_name = os.path.join(
+            os.path.dirname(logging.getLogger().handlers[0].baseFilename),
+            self.path +": " + str(datetime.now()) + ".png")
         coef = self.classifier.coef_.ravel()
         feature_names = self.vectorizer.get_feature_names()
         top_positive_coefficients = np.argsort(coef)[-top_features:]
@@ -163,4 +168,6 @@ class SVMClassifier(ClassifierStrategy):
         plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names[top_coefficients], rotation=60,
                    ha="right")
         plt.tick_params(axis="x", which="major", pad=3, labelsize=8) # Note that labelsize 8pt is set for 50 features. (so it all fits without overlapping)
-        plt.savefig("feature_plot.png", bbox_inches="tight")
+
+        logging.info("Saving feature plot to {}".format(plot_name))
+        plt.savefig(plot_name, bbox_inches="tight")
