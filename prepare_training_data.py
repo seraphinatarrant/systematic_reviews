@@ -20,8 +20,6 @@ def setup_argparse():
     p = argparse.ArgumentParser()
     p.add_argument('-c', dest='config_file', default='config/prep_train_data.yaml',
                    help='a yaml config containing necessary information to prepare training data')
-    #p.add_argument('-d', dest='output_dir', default='../outputs/D4/', help='dir to write output summaries to')
-    #p.add_argument('-m', dest='model_path', default='', help='path for a pre-trained embedding model')
     return p.parse_args()
 
 
@@ -32,6 +30,7 @@ if __name__ == "__main__":
     config = read_yaml_config(args.config_file)
     print("Extracting metadata...")
     all_documents = Document.from_json(config.get("input_json"), batch=True)
+    # TODO create all documents in Zotero and then set their zotero_ids
     print("Writing a csv of {} documents".format(len(all_documents)))
     make_document_csv(all_documents, config.get("csv_path", "."), "training_data")
     print("Loading in CSV")
