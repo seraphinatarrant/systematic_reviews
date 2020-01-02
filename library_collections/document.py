@@ -34,6 +34,7 @@ class Publisher(Enum):
     WebOfScience = 0
     GoogleScholar = 1
     SCOPUS = 2
+    MedLine = 3
 
 ### Other Globalish things
 Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
@@ -94,6 +95,7 @@ class Document(object):
         # classification
         self.gold_label = None
         self.predicted_label = None
+        self.confidence = None
 
         # text information
         self.title = title
@@ -226,6 +228,8 @@ class Document(object):
                     failed += 1
                     logging.debug("Failed to create doc from data: {}".format(doc))
         else:
+            assert type(data) != list, "Tried to create a single doc but received a list. " \
+                                       "Did you mean to set batch=True?"
             new_doc = Document.doc_from_json(data, basedir=basedir)
             if new_doc:
                 documents = [new_doc]
