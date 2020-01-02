@@ -21,8 +21,18 @@ def auth_zotero_library(config: Dict):
     auth = config["auth"]
     return zotero.Zotero(auth["library_id"], auth["library_type"], auth["api_key"])
 
+### Collections
+def get_all_collections(z_library) -> List[Dict]:
+    return z_library.collections()
+
 def get_collection_IDs(collections: List[Dict]) -> List[str]:
     return [col["key"] for col in collections]
+
+def get_collection_names_and_IDs(collections: List[Dict]) -> Dict:
+    name2id = {}
+    for item in collections:
+        name2id[item["data"]["name"]] = item["key"]
+    return name2id
 
 def create_collections(z_library, names:List[str]):
     collections = []
@@ -31,8 +41,13 @@ def create_collections(z_library, names:List[str]):
 
     z_library.create_collections(collections)
 
+### Documents
 def get_all_docs(z_library, collection_id: str) -> List[dict]:
     return z_library.everything(z_library.collection_items_top(collection_id))
+
+def get_by_id(z_library, z_id: str) -> Dict:
+    data = z_library.item(z_id)
+    return data
 
 def fetch_attachment_paths(z_library, parent_doc: Dict):
     parent_id = parent_doc["data"]["key"]
@@ -65,6 +80,22 @@ def create_new_docs(z_library, docs: List[Document], add_attachments=False):
     if add_attachments:
         upload_attachments(z_library, docs)
 
+def update_doc_collections(z_library, doc_data: Dict, remove: Dict=None, add: Dict=None,
+                           remove_all=False):
+    """takes a document json and dicts of name2id for collections to add and remove, and updates in zotero"""
+    #TODO work out how to support nested collections
+    if remove_all:
+        collections_list = []
+    else:
+        collections_list = [col for col in doc_data["data"]["collections"]
+                            if col not in list(remove.values())]
+    collections_list.extend(list(add.values()))
+    doc_data["data"]["collections"] = collections_list
+    z_library.update_item(doc_data)
+    print("Document {} has been updated from {} collections to {}".format(
+        doc_data["data"]["title"], remove.keys(), remove.keys()))
+
+### Misc
 def remove_duplicates(z_library):
     """deletes duplicate documents found in Zotero. Conservatively, based on DOI and ISSN
     and abstract with no normalisation etc"""
@@ -101,6 +132,7 @@ def metadata_pretty_print(item):
 
     print(template.format(title, abstract, doc_type, doi))
 
+
 if __name__ == "__main__":
     args = setup_argparse()
 
@@ -111,13 +143,16 @@ if __name__ == "__main__":
     # auth
     z_library = zotero.Zotero(auth["library_id"], auth["library_type"], auth["api_key"])
     all_documents = z_library.everything(z_library.top()) # gets around small API limit for what is returned
-    all_collections = z_library.collections()
+    all_collections = get_all_collections(z_library)
 
-    remove_duplicates(z_library)
-    sys.exit("done")
+    example_id = "CTJ9YXEL"
+    get_by_id(z_library, example_id)
+    # cleanup
+    #remove_duplicates(z_library)
+    #sys.exit("done")
 
     # example print data from all items in a collection
-    collection_i_want = "WOS"
+    collection_i_want = "include"
     for item in all_collections:
         if item["data"]["name"] == collection_i_want:
             collection_key = item["key"]
