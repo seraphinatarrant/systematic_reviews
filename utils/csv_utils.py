@@ -36,8 +36,7 @@ def make_document_csv(all_documents:List, csv_path:str, csv_format:str):
                 })
 
 #TODO zotero upload to different training data folders per region
-def read_document_csv(csv_path:str, csv_format:str, zotero_config):
-    z_library = auth_zotero_library(zotero_config)
+def read_document_csv(csv_path:str, csv_format:str, z_library):
     # get zotero collections
     z_collections = get_collection_names_and_IDs(get_all_collections())
 

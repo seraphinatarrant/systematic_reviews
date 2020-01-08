@@ -1,9 +1,8 @@
-"""PSA this is very much in a TODO state as all API kinks have not yet been worked out"""
-
 import argparse
-from typing import List, Type, Dict
-
 import sys
+from typing import List, Type, Dict
+from enum import Enum
+
 from pyzotero import zotero
 
 from library_collections.document import Document
@@ -62,20 +61,26 @@ def upload_attachments(z_library, docs: List[Document]):
         response = z_library.attachment_simple(doc.filepath, parentid=doc.get_id())
         # only need to do something with response if also want to store attachment id
 
-def create_new_docs(z_library, docs: List[Document], add_attachments=False):
-    print("Creating {} Documents...".format(len(docs)))
+def create_new_docs(z_library, docs: List[Document], add_attachments=False, collection_ids=None):
+    print("Creating {} Documents in Zotero...".format(len(docs)))
     all_templates = []
     for doc in docs:
         # select a template type from z_library.item_types()
         template = z_library.item_template("journalArticle")
         # set a title
-        template["title"] = doc.title
-        #TODO include other information extracted from pdf here
+        template["data"]["title"] = doc.title
+        template["data"]["abstract"] = doc.abstract
+        template["data"]["language"] = doc.language
+        template["data"]["creators"] = doc.authors
+        template["data"]["DOI"] = doc.doi
+        template["data"]["ISSN"] = doc.issn
+        template["data"]["url"] = doc.url
+        if collection_ids:
+            template["data"]["collections"] = collection_ids
         all_templates.append(template)
 
     response = z_library.create_items(all_templates)
     doc_ids = response["key"] # TODO unsure if this is correct or nested (this is the format if create one item at a time)
-    # TODO set correct ids for all Documents via set_id method
 
     if add_attachments:
         upload_attachments(z_library, docs)

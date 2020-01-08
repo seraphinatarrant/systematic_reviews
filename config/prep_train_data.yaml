@@ -1,6 +1,2 @@
-auth:
-  library_id: 6213075
-  library_type: user
-  api_key: 1xPT5POxiAkFtQ2vTNpI9dkv
-
-input_dir: ../PDFs/excluded/
+input_json: PDFs/include/include_new.json
+csv_path: training_data.csv
