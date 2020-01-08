@@ -10,18 +10,19 @@ CITATION_BASE = "data/citation/"
 FORMAT = "zotero/"
 
 
-def make_query_url(url: str) -> str:
-    query_url = API_BASE + CITATION_BASE + FORMAT + parse.quote_plus(url)
+def make_query_url(identifier: str) -> str:
+    query_url = API_BASE + CITATION_BASE + FORMAT + parse.quote_plus(identifier)
     return query_url
 
-def get_citation_data(url: str) -> dict:
-    query_url = make_query_url(url)
+def get_citation_data(identifier: str) -> dict:
+    """takes a url for a pdf, a doi, or issn, and returns citation data"""
+    query_url = make_query_url(identifier)
     response = requests.get(query_url)
     if response.status_code == 200:
         return json.loads(response.text)[0] # for some reason it is nested in a list of length 1 TODO make sure never returns a multi-item list
     else:
         print("No data returned for url: {}, status code: {}".format(
-            url, response.status_code), file=sys.stderr)
+            identifier, response.status_code), file=sys.stderr)
         return {}
 
 
