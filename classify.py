@@ -19,8 +19,8 @@ def setup_argparse():
     p.add_argument('-c', dest='config_file', default='config/example_classifier.yaml',
                    help='a yaml config containing necessary API information')
     p.add_argument('-t', '--train', action='store_true', help='trains a new classifier')
-    p.add_argument('-l', '--log', dest='loglevel', choices=["INFO", "DEBUG", "WARNING", "ERROR",
-                                                            "CRITICAL"])
+    p.add_argument('-l', '--log', dest='loglevel', default="INFO",
+                   choices=["INFO", "DEBUG", "WARNING", "ERROR","CRITICAL"])
     p.add_argument('--log_dir', default="logs/", help="location to store log files")
     return p.parse_args()
 
