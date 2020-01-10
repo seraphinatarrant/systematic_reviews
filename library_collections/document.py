@@ -41,7 +41,9 @@ Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
 
 def make_authors(creators_list, text: str="", split_on: str="and") -> List[dict]:
     """tries to set author from JSON, else extracts author information from raw text, returns list of dicts"""
-    # Author info is generally of format: Hamsho, A and Tesfamarym, G and Megersa, G and Megersa, M
+    # Google Scholar Author info format: Hamsho, A and Tesfamarym, G and Megersa, G and Megersa, M
+    # Scopus Author info format: Asmare, Kassahun;Sibhat, Berhanu;Haile, Aynalem;Sheferaw, Desie;Aragaw, Kassaye;Abera, Mesele;Abebe, Rahmeto;Wieland, Barbara"
+    # TODO WoS Author info raw text parse:
     if creators_list:
         return creators_list
 
@@ -213,15 +215,27 @@ class Document(object):
 
     @classmethod
     def from_json(cls, filepath: str, batch: bool=False) -> List:
-        """takes a Google Scholar JSON file, returns a Document or list of Documents"""
+        """takes a JSON file, returns a Document or list of Documents"""
+        source2func = {
+            "Scopus" : cls.doc_from_scopus_json,
+            "WoS" : cls.doc_from_wos_json,
+            None: cls.doc_from_json
+                       }
+
         with open(filepath, "r") as fin:
             data = json.load(fin)
+        doc_source = data.get("metadata").get("source")
+        data = data["results"] if doc_source else data # all special sources have a degree of nesting
+        # skip json if no data
+        if not data:
+            return None
+
         documents, failed = [], 0
         basedir, filename = os.path.split(filepath)
         if batch:
             logging.info("Processing {} docs...".format(len(data)))
             for doc in data:
-                new_doc = Document.doc_from_json(doc, basedir=basedir)
+                new_doc = source2func[doc_source](doc, basedir=basedir)
                 if new_doc:
                     documents.append(new_doc)
                 else:
@@ -230,24 +244,28 @@ class Document(object):
         else:
             assert type(data) != list, "Tried to create a single doc but received a list. " \
                                        "Did you mean to set batch=True?"
-            new_doc = Document.doc_from_json(data, basedir=basedir)
+            new_doc = source2func[doc_source](data, basedir=basedir)
             if new_doc:
                 documents = [new_doc]
             else:
                 logging.debug("Failed to create doc from data: {}".format(data))
         logging.info("{} documents failed to retrieve metadata and were skipped, "
               "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100))
-        return documents if len(documents) else None
+        return documents if documents else None
 
+    # TODO refactor all of these so there isn't duplicative code
     @classmethod
     def doc_from_json(cls, data: dict, basedir: str):
+        """default creates a doc from json - based on Google Scholar format"""
         resource_url = data["bib"]["url"]
-        filename = data.get("saved_pdf_name", "")
         citation_data = get_citation_data(resource_url) # this is a dict
+
+        filename = data.get("saved_pdf_name", "")
         if not citation_data:
             logging.debug("Failed - URL: {} PDF: {}".format(resource_url,filename))
             return None
         filepath = os.path.join(basedir, filename) if filename else ""
+
         new_doc = Document(source=citation_data.get("itemType", ""),
                            file_type=FileType.pdf,
                            url=resource_url, filepath=filepath)
@@ -256,12 +274,64 @@ class Document(object):
         new_doc.title = title if title else citation_data.get("title")
         new_doc.year = int(year) if year else get_year_from_date(citation_data.get("date"))
         new_doc.authors = make_authors(citation_data.get("creators", []), data["bib"]["author"])
-        new_doc.doi = citation_data.get("DOI", "")
-        new_doc.issn = citation_data.get("ISSN", "")
-        new_doc.abstract = citation_data.get("abstractNote", "")
-        new_doc.language = citation_data.get("language", "") # ISO code
+        new_doc.set_info_from_citation(citation_data)
 
         return new_doc
+
+    @classmethod
+    def doc_from_wos_json(cls, data: dict, basedir: str):
+        filename = data.get("saved_pdf_name", "")
+        doi = data.get("Identifier.Doi")
+        if not doi:
+            logging.debug("Couldn't find a DOI for PDF: {}, skipping".format(filename))
+            return None
+        filename = doi + ".pdf" # TODO change this when format fixed
+        citation_data = get_citation_data(doi)  # this is a dict
+        if not citation_data:
+            logging.debug("Failed - PDF: {}".format(filename))
+            return None
+        filepath = os.path.join(basedir, filename) if filename else ""
+
+        new_doc = Document(source=citation_data.get("itemType", ""),
+                           file_type=FileType.pdf, filepath=filepath)
+        # populate fields
+        title = data.get("title")
+        new_doc.title = title if title else citation_data.get("title")
+        new_doc.authors = make_authors(citation_data.get("creators", []), data["authors"],
+                                       split_on=";")
+        new_doc.set_info_from_citation(citation_data)
+
+    @classmethod
+    def doc_from_scopus_json(cls, data: dict, basedir: str):
+        filename = data.get("saved_pdf_name", "")
+        doi = data.get("doi")
+        if not doi:
+            logging.debug("Couldn't find a DOI for PDF: {}, skipping".format(filename))
+            return None
+        filename = doi + ".pdf"  # TODO fix this later
+        citation_data = get_citation_data(doi)  # this is a dict
+        if not citation_data:
+            logging.debug("Failed - PDF: {}".format(filename))
+            return None
+        filepath = os.path.join(basedir, filename) if filename else ""
+
+        new_doc = Document(source=citation_data.get("itemType", ""),
+                           file_type=FileType.pdf, filepath=filepath)
+        # populate fields
+        new_doc.title = data.get("title")
+        new_doc.abstract = data.get("description")
+        new_doc.authors = make_authors(citation_data.get("creators", []), data["author_names"],
+                                       split_on=";")
+        new_doc.set_info_from_citation(citation_data)
+
+        return new_doc
+
+    def set_info_from_citation(self, citation_data):
+        self.title = citation_data.get("title", "") if not self.title else self.title
+        self.abstract = citation_data.get("abstractNote", "") if not self.abstract else self.abstract
+        self.doi = citation_data.get("DOI", "")
+        self.issn = citation_data.get("ISSN", "")
+        self.language = citation_data.get("language", "")  # ISO code
 
 
 class TextField(object):

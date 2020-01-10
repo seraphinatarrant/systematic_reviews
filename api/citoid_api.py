@@ -21,7 +21,7 @@ def get_citation_data(identifier: str) -> dict:
     if response.status_code == 200:
         return json.loads(response.text)[0] # for some reason it is nested in a list of length 1 TODO make sure never returns a multi-item list
     else:
-        print("No data returned for url: {}, status code: {}".format(
+        print("No data returned for query: {}, status code: {}".format(
             identifier, response.status_code), file=sys.stderr)
         return {}
 
