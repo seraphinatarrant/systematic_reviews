@@ -8,6 +8,17 @@ from api.zotero_api import auth_zotero_library, get_collection_names_and_IDs, ge
     get_by_id, update_doc_collections
 
 
+### Globals for reading and writing CSVs
+TRAINING_DATA_HEADERS = ["Title", "Abstract", "ID", "DOI", "Label"]
+TEXT_EXTRACTION_HEADERS = ["ROW_NUMBER", "IDENTIFIER", "YEAR_PUBLICATION", "REFERENCE",
+                           "START_DATE_DATA", "END_DATE_DATA", "STATE", "ECOSYSTEM",
+                           "PRODUCTION_SYSTEM", "SPECIES", "AGE", "AGE_DETAIL", "DISEASE", "SAMPLE",
+                           "DIAGNOSTIC_TEST", "MEASUREMENT", "NUMBER_POSITIVE", "NUMBER_TESTED",
+                           "PERCENTAGE", "CALCULATION", "COMMENTS", "SOURCE"]
+CLASSIFIER_HEADERS = ["Title", "Abstract", "ID", "DOI", "Label",
+                       "Confidence", "Correction"]
+
+
 def make_csv_name(doc_path, prefix):
     dir_path, filename = os.path.split(doc_path)
     filename, extension = os.path.splitext(filename)
@@ -22,8 +33,7 @@ def make_document_csv(all_documents:List, csv_path:str, csv_format:str):
     """write information from all documents to a csv, depending on format"""
     with open(csv_path, "w", newline="") as csvfile:
         if csv_format == "training_data":
-            HEADERS = ["Title", "Abstract", "ID", "DOI", "Label"] # TODO move this to a global dict where headers are looked up from an enum
-            csv_writer = csv.DictWriter(csvfile, fieldnames=HEADERS)
+            csv_writer = csv.DictWriter(csvfile, fieldnames=TRAINING_DATA_HEADERS)
             csv_writer.writeheader()
             for doc in all_documents:
                 csv_writer.writerow({
@@ -33,16 +43,14 @@ def make_document_csv(all_documents:List, csv_path:str, csv_format:str):
                     "DOI": doc.doi
                 })
         elif csv_format == "classifier_output":
-            HEADERS = ["Title", "Abstract", "ID", "DOI", "Label",
-                       "Confidence", "Correction"]  # TODO move this to a global dict where headers are looked up from an enum
-            csv_writer = csv.DictWriter(csvfile, fieldnames=HEADERS)
+            csv_writer = csv.DictWriter(csvfile, fieldnames=CLASSIFIER_HEADERS)
             csv_writer.writeheader()
             for doc in all_documents:
                 csv_writer.writerow({
                     "Title": doc.title,
                     "Abstract": doc.abstract,
                     "ID": doc.get_id(),
-                    "Zotero_ID": doc.zotero_id,
+                    "DOI": doc.zotero_id,
                     "Label": doc.predicted_label,
                     "Confidence": doc.confidence
                 })
