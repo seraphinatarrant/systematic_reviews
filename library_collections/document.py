@@ -77,7 +77,7 @@ class Document(object):
 
     def __init__(self, source, file_type: FileType, url: str="", filepath: str="",
                  custom_id: int=0, zotero_id: str=None, title:str=None, abstract: str=None,
-                 year:int=None, authors=None):
+                 year:int=None, authors=None, doi=None):
         # identifiers
         self.source = source
         self.file_type = file_type
@@ -86,7 +86,7 @@ class Document(object):
         self._id = self._make_our_id(custom_id)
         self.zotero_id = zotero_id  # generally set on upload to reference manager
         self.issn = None
-        self.doi = None
+        self.doi = doi
 
         # extracted metadata
         self.reference = ""
@@ -106,7 +106,10 @@ class Document(object):
         self.data = {} # for data after information extraction
         self.language = None
 
-        assert (url or filepath or zotero_id), "Need to provide a source url and/or a filepath to " \
+        # extracted data
+        self.text_fields
+
+        assert (url or filepath or zotero_id or doi), "Need to provide a source url and/or a filepath to " \
                                                "create a Document if not already uploaded to Zotero"
 
     def __str__(self):
@@ -336,13 +339,13 @@ class Document(object):
 
 class TextField(object):
 
-
-    def __init__(self, text:str, text_type: TextType):
-        self.text = text
-        self.text_type = text_type
+    def __init__(self, field_name: str, value: str, text_span:str):
+        self.field_name = field_name
+        self.value = value
+        self.text_span = text_span
 
     def __str__(self):
-        return self.text
+        return "{}: {}".format(self.field_name, self.value)
 
     def __process_text(self):
         """presumably some type of tokenization, to be built out later"""
