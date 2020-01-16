@@ -1,0 +1,4 @@
+#input_json: PDFs/include/include_new.json # if just want to read a new json file
+input_dir: PDFs/new_training_data/ # if want to read all json within a directory and subdirectories
+csv_prefix: training_data # if want to specify the prefix for the csv. If absent will co-name with the json file being read in
+require_abstracts: False # if set to True, skips

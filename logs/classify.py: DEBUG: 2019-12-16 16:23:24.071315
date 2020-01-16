@@ -1,0 +1,152 @@
+INFO:Reading config...
+INFO:Config settings:
+{'corpus': {'from_zotero': True, 'zotero_config': 'config/zotero.yaml', 'save_loc': 'corpus.pkl', 'test_labels': True, 'include': 'PDFs/include/include_new.json', 'exclude': 'PDFs/exclude/exclude_new.json'}, 'model': {'pretrained': 'new_test.pt'}, 'strategy': {'name': 'svm', 'vector_type': 'tf-idf', 'max_iter': 1000, 'loss': 'log', 'regularizer': 'l2', 'lr': 'optimal', 'early_stopping': True, 'balance_classes': True}}
+INFO:Loading documents from Zotero...
+DEBUG:Starting new HTTPS connection (1): api.zotero.org:443
+DEBUG:https://api.zotero.org:443 "GET /users/6213075/collections?format=json&limit=100 HTTP/1.1" 200 421
+DEBUG:Starting new HTTPS connection (1): api.zotero.org:443
+DEBUG:https://api.zotero.org:443 "GET /users/6213075/collections/4BRSXDYC/items/top?format=json&limit=100 HTTP/1.1" 200 1378
+DEBUG:Starting new HTTPS connection (1): api.zotero.org:443
+DEBUG:https://api.zotero.org:443 "GET /users/6213075/collections/J8HKRZDH/items/top?format=json&limit=100 HTTP/1.1" 200 None
+DEBUG:Starting new HTTPS connection (1): api.zotero.org:443
+DEBUG:https://api.zotero.org:443 "GET /users/6213075/collections/J8HKRZDH/items/top?limit=100&start=100 HTTP/1.1" 200 49369
+DEBUG:Starting new HTTPS connection (1): api.zotero.org:443
+DEBUG:https://api.zotero.org:443 "GET /users/6213075/collections/Z4S5DZNZ/items/top?format=json&limit=100 HTTP/1.1" 200 18406
+INFO:1 docs (out of 230 total) have no gold labels and are not included...
+INFO:Seroprevalence of contagious bovine pleuropneumonia at export quarantine centers in and around Adama, Ethiopia
+INFO:80 docs (out of 229 total) have no abstracts and are not included...
+INFO:SERO-PREVALENCE AND FACTORS ASSOCIATED WITH BRUCELLOSIS IN GOATS AND SHEEP AND ASSESSMENT OF PASTORALISTS, KNOWLEDGE ATTITUDE AND PRACTICES TOWARDS BRUCELLOSIS IN GARISSA COUNTY
+Sero‐prevalence of brucellosis in Cattle in Swaziland
+PROBLEMS OF REPRODUCTION
+SERO-PREVALENCE AND ASSOCIATED RISK FACTORS OF CAMEL BRUCELLOSIS IN SELECTED DISTRICTS OF FAFAN ZONE, SOMALI REGION. EASTERN ETHIOPIA
+occurrence, characterisation and impact
+Prevalence and Risk Factors of Camel brucellosis in ElgadrrIf State of Sudan.
+Managing Development Challenges in the Pastoral Regions of Ethiopia
+Interventions and tools to improve small ruminant health in Ethiopia
+ILRI Food Safety and Zoonoses India and Bihar
+HYGIENIC PRACTICES, BACTERIOLOGICAL QUALITY OF COW MILK AND IT’ S PUBLIC HEALTH IMPORTANCE ALONG THE DAIRY VALUE CHAIN IN SIDAMA HIGH LANDS OF SOUTHERN ETHIOPIA
+Identification and Molecular Characterization of Brucella Strains Isolated from Sheep and Goats in the West Bank, Palestine
+Gross Abnormalities of Testes in Different Breed of Bucks and Rams Slaughtered at Helimex Abattoir Debre Zeit
+Estimation of the prevalence of brucellosis in humans and Livestock in northern Turkana district, Kenya
+Estimates Of The Seroprevelance And The Associated Risk Factors Of Brucellosis In Sheep And Goats In Benadir Region Of Somalia
+ASSESSMENT OF MAJOR REPRODUCTIVE PROBLEMS OF DAIRY CATTLE IN SELECTED SITES OF CENTRAL ZONE OF TIGRAI REGION, NORTHERN ETHOPIA
+Agricultural research for Ethiopian renaissance: challenges, opportunities and directions
+THE PREVALENCE OF BRUCELLA ABORTUS AND MYCOTOXIN CONTAMINATION OF ANIMAL FEEDS AND IMPLICATIONS ON MILK SAFETY IN RURAL AND PERI-URBAN SMALL-HOLDER DAIRY SYSTEMS IN NAKURU COUNTY, KENYA
+Sero–Epidemiology of Brucellosis in Organized Cattle and Buffaloes in Punjab (India)
+Influence of pet ownership on opinions towards the use of animals in biomedical research
+Seroprevalence of Brucella abortus in the Bamenda Municipal Abattoir of the Western Highlands, of Cameroon
+Pathological classification and etiological prevalence of endometritis in ewes suffering from infertility problems
+An epidemiological study of major camel diseases in the Borana lowland, Southern Ethiopia
+Sero-prevalence of camel brucellosis in three abbatoirs of Nothern Nigeria
+Language in tuberculosis services: can we change to patient-centred terminology and stop the paradigm of blaming the patients?
+Bovine tuberculosis: a double-edged issue at the human/livestock/wildlife interface in Africa
+Ritual Slaughter as Overlooked Risk Factor for Brucellosis
+Prevalence and Factors Associated with Cattle Brucellosis in Animal Herds of the Namibe Province in Angola
+Molecular study of Brucellosis in camels by the use of TaqMan® real-time PCR
+1574944279.6357665.pdf
+exclude_new.json
+1574944267.9132173.pdf
+1574944252.2169523.pdf
+1574944229.417435.pdf
+1574944165.289067.pdf
+1574944152.9787362.pdf
+1574944147.8976998.pdf
+1574944145.9636385.pdf
+1574944142.4311137.pdf
+1574944142.9469674.pdf
+1574944140.2046187.pdf
+1574944129.5614767.pdf
+1574944106.3304756.pdf
+1574944101.612856.pdf
+1574944097.7485318.pdf
+1574944089.7838714.pdf
+1574944000.8338063.pdf
+1574943994.8653035.pdf
+1574943987.0264223.pdf
+1574943966.4476135.pdf
+1574943934.3712795.pdf
+1574943922.1430154.pdf
+1574943918.6456916.pdf
+1574943916.2043858.pdf
+1574943908.8061316.pdf
+1574943906.6278753.pdf
+1574943896.2278872.pdf
+1574943901.438085.pdf
+1574943863.0251052.pdf
+1574709155.3443055.pdf
+1574709151.3130238.pdf
+1574709147.8224616.pdf
+1574709138.0491524.pdf
+1574709111.8600667.pdf
+1574709104.208945.pdf
+1574709102.7562034.pdf
+1574709098.2642238.pdf
+1574709102.1253328.pdf
+1574709090.8401003.pdf
+1574709093.9798942.pdf
+1574709097.8675547.pdf
+1574709079.3411767.pdf
+Epidemiological survey of brucellosis in sheep and goats in selected pastoral and agro-pastoral lowlands of Ethiopia: -EN- -FR- Enquête épidémiologique sur la brucellose ovine et caprine dans certaines zones des plaines pastorales et agropastorales éthiopiennes -ES- Estudio epidemiológico de la brucelosis ovina y caprina en una serie de llanuras pastorales y agropastorales de Etiopía
+BRUCELLOSIS IN BORENA CATTLE: - SEROPREVALENCE AND AWARENESS OF THE PASTORAL COMMUNITY IN YABELLO ETHIOPIA
+SERO-PREVALENCE OF BOVINE BRUCELLOSIS IN AND AROUND CHENCHA DISTRICT, GOMOGOFA ZONE, SOUTH EASTERN ETHIOPIA
+ADDIS ABABA UNIVERSITY, COLLEGE OF VETERINARY MEDICINE AND AGRICULTURE DEPARTMENT OF CLINICAL STUDIES
+1574709296.6381125.pdf
+1574709288.7483077.pdf
+1574709282.9872847.pdf
+1574709284.644193.pdf
+1574709281.6985748.pdf
+INFO:119 Training and 30 Test Documents
+INFO:Reading classifier...
+INFO:Training classifier with params:
+INFO:{'alpha': 0.0001, 'average': False, 'class_weight': 'balanced', 'early_stopping': True, 'epsilon': 0.1, 'eta0': 0.0, 'fit_intercept': True, 'l1_ratio': 0.15, 'learning_rate': 'optimal', 'loss': 'log', 'max_iter': 1000, 'n_iter_no_change': 5, 'n_jobs': None, 'penalty': 'l2', 'power_t': 0.5, 'random_state': None, 'shuffle': True, 'tol': 0.001, 'validation_fraction': 0.1, 'verbose': 0, 'warm_start': False}
+INFO:Saving classifier to new_test.pt
+INFO:Saving feature plot to /Users/seraphinagoldfarb-tarrant/PycharmProjects/sebi_information_retrieval/logs/new_test.pt: 2019-12-16 16:23:36.218364.png
+INFO:Classifying test corpus of 30 documents...
+INFO:Classifier Accuracy: 0.8
+INFO:-----------------------------------------------------------------------------------------
+INFO:Classification Report:
+INFO:              precision    recall  f1-score   support
+
+     exclude       0.88      0.88      0.88        24
+     include       0.50      0.50      0.50         6
+
+    accuracy                           0.80        30
+   macro avg       0.69      0.69      0.69        30
+weighted avg       0.80      0.80      0.80        30
+
+INFO:[[21  3]
+ [ 3  3]]
+DEBUG:Printing Results:
+DEBUG:Seroprevalence of Brucellosis in Goats and Sheeps in Different Regions of India, using B. melitensis Soluble Antigen in Plate-ELISA was given label: exclude.
+DEBUG:Seroprevalence and Risk Factors of Brucellosis among Camels Belonging to Selected Districts of Afar, Ethiopia: Need for Public Awareness was given label: exclude.
+DEBUG:Seroprevalence of Brucellosis in Buffaloes by Indirect Enzyme Linked Immune-sorbent Assay in Punjab, India was given label: exclude.
+DEBUG:Sero-Prevalence of Small Ruminant Brucellosis in Three Selected Districts of Somali Region, Eastern Ethiopia was given label: include.
+DEBUG:Sero-epidemiological Study of Camel Brucellosis in Mehoni District, South Eastern Tigray, Ethiopia was given label: exclude.
+DEBUG:Risk assessment of staphylococcal poisoning due to consumption of informally-marketed milk and home-made yoghurt in Debre Zeit, Ethiopia was given label: exclude.
+DEBUG:Prevalence and risk factors associated with brucellosis among high-risk individuals in Lafia, Nasarawa state, Nigeria was given label: exclude.
+DEBUG:Monthly Variations of the Prevalence of Bovine Brucellosis in Benin was given label: exclude.
+DEBUG:Apparent seroprevalence, isolation and identification of risk factors for brucellosis among dairy cattle in Goa, India was given label: exclude.
+DEBUG:Prevalence of bovine tuberculosis in the Aksu Region of Xinjiang, China, between 1985 and 2016 was given label: include.
+DEBUG:Sero-prevalence of brucellosis in dairy cattle in Port Sudan: a short communication was given label: exclude.
+DEBUG:Review on Brucellosis Sero-prevalence and Ecology in Livestock and Human Population of Ethiopia was given label: exclude.
+DEBUG:Sero-Prevalence of Anti-Brucella Antibodies in Camels in El-Gedarif State: A Short Communication was given label: exclude.
+DEBUG:Seroprevalence of bovine brucellosis and associated risk factors in and around Alage district, Ethiopia was given label: exclude.
+DEBUG:Prevalence of the main infectious causes of abortion in dairy cattle in Algeria was given label: exclude.
+DEBUG:Bovine Brucellosis: Serological Survey in Guto-Gida District, East Wollega Zone, Ethiopia was given label: exclude.
+DEBUG:SEROPREVALENCE AND ASSOCIATED RISK FACTORS OF BRUCELLOSIS IN DAIRY CATTLE IN SELECTED TOWNS OF WEST SHEWA, ETHIOPIA was given label: exclude.
+DEBUG:MOLECULAR DIAGNOSIS OF BRUCELLOSIS IN CAMELS BY CONVENTIONAL POLYMERASE CHAIN REACTION IN WASIT PROVINCE, IRAQ was given label: exclude.
+DEBUG:Brucella abortus infection in a multispecies livestock farm in Nigeria was given label: exclude.
+DEBUG:Incidence of Camel Brucellosis in Pakistan was given label: exclude.
+DEBUG:Alcina Vieira de CARVALHO-NETA was given label: exclude.
+DEBUG:Sheep Mange Mites and Lice: Prevalence and Risk Factors in Asella and its Surroundings, South Eastern Ethiopia was given label: exclude.
+DEBUG:Bovine Tuberculosis and Brucellosis in Traditionally Managed Livestock in Selected Districts of Southern Province of Zambia was given label: include.
+DEBUG:Seroprevalence of Brucellosis in Camels in Sindh, Pakistan was given label: exclude.
+DEBUG:Camelus dromedarius brucellosis and its public health associated risks in the Afar National Regional State in northeastern Ethiopia was given label: include.
+DEBUG:Risk Factors Associated with Brucella Seropositivity in Sheep and Goats in Duhok Province, Iraq was given label: exclude.
+DEBUG:Diagnostic verification of Brucella species among aborted small ruminants and in-contact persons in Minia governorate was given label: exclude.
+DEBUG:Sero-Prevalence Study of Bovine Brucellosis and its Associated Risk Factors in Debrebirhan and Ambo Towns was given label: include.
+DEBUG:Brucellosis and Some Reproductive Problems of Indigenous Arsi Cattle in Selected Arsi Zone’s of Oromia Regional State, Ethiopia was given label: include.
+DEBUG:Veterinary Medicine and Human Public Health in Africa was given label: exclude.
+DEBUG:-----------------------------------------------------------------------------------------
+DEBUG:Printing Errors:
+DEBUG:Ratio of incorrect/total: 0/30

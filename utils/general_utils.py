@@ -2,10 +2,11 @@ import pickle
 import yaml
 import random
 import string
+from typing import Tuple, List, Dict
 from itertools import filterfalse
 from sklearn.model_selection import train_test_split
 
-def read_yaml_config(config_file):
+def read_yaml_config(config_file: str) -> Dict:
     return yaml.load(open(config_file), Loader=yaml.FullLoader)
 
 def bool_partition(func, iterable):
@@ -21,7 +22,7 @@ def load_pkl(path: str):
         things = pickle.load(fin)
     return things
 
-def make_id():
+def make_id() -> str:
     id_length = 10 # we can change this to be longer based on volume of crawl
     alphanumeric = string.ascii_lowercase + string.digits
     return ''.join(random.choices(alphanumeric, k=id_length))
