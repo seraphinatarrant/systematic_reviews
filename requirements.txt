@@ -11,3 +11,4 @@ tqdm
 requests
 lxml
 bs4
+pdfminer
