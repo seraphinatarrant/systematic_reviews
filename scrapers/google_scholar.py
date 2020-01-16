@@ -11,11 +11,21 @@ class GoogleScholar(Query):
         super().__init__(label, search_phrase, date_range)
 
     def search(self):
-        return scholarly.search_pubs_query(self.search_phrase)
+        results = scholarly.search_pubs_query(self.search_phrase)
+
+        if results:
+            return results
+        else:
+            raise Exception("No results were returned. This is likely due to rate limits!")
 
     def search_with_year(self):
         custom_url = f"/scholar?q={self.search_phrase}&hl=en&as_sdt=0%2C5&as_ylo={self.start}&as_yhi={self.end}"
-        return scholarly.search_pubs_custom_url(custom_url)
+        results = scholarly.search_pubs_custom_url(custom_url)
+
+        if results:
+            return results
+        else:
+            raise Exception("No results were returned. This is likely due to rate limits!")
 
     def parse_results(self, query_results, log_folder, log=True, n=500):
         with tqdm.tqdm(total=n) as pbar:

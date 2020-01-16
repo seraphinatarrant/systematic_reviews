@@ -1,3 +1,4 @@
+pybliometrics
 numpy
 scikit-learn
 python==3.7
