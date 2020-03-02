@@ -1,3 +1,4 @@
+pybliometrics
 dateutil
 numpy
 matplotlib
@@ -10,3 +11,4 @@ tqdm
 requests
 lxml
 bs4
+pdfminer

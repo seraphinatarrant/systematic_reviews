@@ -1,19 +1,57 @@
-import requests
-from bs4 import BeautifulSoup
-import json
 import os
+import re
+import json
+import tqdm
+import requests
 
-class Grabber:
+
+from bs4 import BeautifulSoup
+
+
+class GrabAll:
+    def __init__(self, searcher):
+        self.searcher = searcher
+
+    def run(self):
+        for result in self.searcher.data['results']:
+
+            g = GrabOne(save_location=self.searcher.results_dir,
+                        bib_info=result,
+                        label=self.searcher.label,
+                        url=result['url'])
+
+            g.run(filename=result['saved_pdf_name'])
+
+
+class GrabOne:
     def __init__(self, save_location, bib_info: dict, label: str, url: str):
         self.save_location = save_location
-        self.url = url
-        self.bib_info = bib_info
         self.label = label
+        self.bib_info = bib_info
+
+        if 'dx.doi.org/' in url:
+            # Do the DOI redirect here to get the actual URL before choosing a Grabber
+            user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+            headers = {'User-Agent': user_agent}
+
+            try:
+                r = requests.get(url, headers=headers, allow_redirects=True, timeout=15)
+            except Exception as e:
+                print(f'Error: {e}')
+                return
+
+            if 'elsevier.com/' in r.url:
+                target = r.url.split('/')[-1]
+
+                self.url = f"https://www.sciencedirect.com/science/article/pii/{target}"
+            else:
+                self.url = r.url
+        else:
+            self.url = url
 
         self.grabber = self.choose_grabber()
 
     def choose_grabber(self):
-
         args = dict(save_location=self.save_location,
                     bib_info=self.bib_info,
                     label=self.label,
@@ -33,12 +71,90 @@ class Grabber:
             return NIHGrabber(**args)
         if 'scielo.org.za/' in self.url:
             return ScieloGrabber(**args)
+        if 'journals.plos.org/' in self.url:
+            return PlosGrabber(**args)
+        if 'ojvr.org/' in self.url:
+            return OJVRGrabber(**args)
+        if 'cambridge.org/' in self.url:
+            return CambridgeGrabber(**args)
+        if 'veterinaryworld.org/' in self.url:
+            return VetWorldGrabber(**args)
+        if 'hindawi.com/' in self.url:
+            return HindawiGrabber(**args)
+        if 'ejmanager' in self.url:
+            return EJManagerGrabber(**args)
+        if 'scialert.net/' in self.url:
+            return SciAlertGrabber(**args)
+        if 'medwelljournals' in self.url:
+            return MedwellGrabber(**args)
+        if 'jidc.org/' in self.url:
+            return JIDCGrabber(**args)
+        if 'oup.com/' in self.url:
+            return OUPGrabber(**args)
+        if 'aem.asm.org/' in self.url:
+            return ASMAEMGrabber(**args)
+        if 'frontiersin.org/' in self.url:
+            return FrontiersGrabber(**args)
+        if 'indianjournals.com/' in self.url:
+            return IndianJournalsGrabber(**args)
+        if 'springeropen.com/' in self.url:
+            return SpringerOpenGrabber(**args)
+        if 'tandfonline.com/' in self.url:
+            return TandFGrabber(**args)
+        if 'ijpsr.com/' in self.url:
+            return IJPSRGrabber(**args)
+        if 'liebertpub.com/' in self.url:
+            return LiebertGrabber(**args)
+        if 'ajtmh.org/' in self.url:
+            return AJTMHGrabber(**args)
+        if 'panafrican-med-journal' in self.url:
+            return PanAfricanGrabber(**args)
+        if 'sagepub.com/' in self.url:
+            return SagePubGrabber(**args)
+        if 'akademia.com/' in self.url:
+            return AkademiaiGrabber(**args)
+        if 'ajol.info/' in self.url:
+            return AJOLGrabber(**args)
+        if 'jfoodprotection.org/' in self.url:
+            return JFoodGrabber(**args)
+        if 'jsava.co.za/' in self.url:
+            return JsavaGrabber(**args)
+        if 'bioone.org/' in self.url:
+            return BiooneGrabber(**args)
+        if 'humankinetics.com/' in self.url:
+            return HumanKineticsGrabber(**args)
+        if 'cdc.gov/' in self.url:
+            return CDCGrabber(**args)
+        if 'ekb.eg/' in self.url:
+            return EKBGrabber(**args)
 
         return BaseGrabber(**args)
 
     def run(self, filename):
-        pdf_data = self.grabber.get_pdf()
-        self.grabber.write_pdf(pdf_data, filename)
+        if hasattr(self, 'grabber'):
+            pdf_data = self.grabber.get_pdf()
+            try:
+                self.grabber.write_pdf(pdf_data, filename)
+            except Exception as e:
+                os.makedirs(f'{self.save_location}/logs', exist_ok=True)
+
+                with open(f'{self.save_location}/logs/failed_to_grab_{self.label}.txt', 'a') as out:
+                    out.write('\n')
+                    json.dump(self.bib_info, out)
+                    out.write('\n')
+                    out.write('=' * 70)
+
+                print('Failed to get PDF')
+        else:
+            os.makedirs(f'{self.save_location}/logs', exist_ok=True)
+
+            with open(f'{self.save_location}/logs/failed_to_grab_{self.label}.txt', 'a') as out:
+                out.write('\n')
+                json.dump(self.bib_info, out)
+                out.write('\n')
+                out.write('=' * 70)
+
+            print('Failed to get PDF')
 
 
 class BaseGrabber:
@@ -59,7 +175,7 @@ class BaseGrabber:
         user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
         headers = {'User-Agent': user_agent}
 
-        r = requests.get(url, headers=headers, allow_redirects=True)
+        r = requests.get(url, headers=headers, allow_redirects=True, timeout=(15, None))
 
         if 'pdf' in r.headers.get('content-type').lower():
             return r.content
@@ -77,15 +193,420 @@ class BaseGrabber:
         return self.url
 
     def log(self):
-        os.makedirs('logs', exist_ok=True)
+        os.makedirs(f'{self.save_location}/logs', exist_ok=True)
 
-        with open(f'logs/failed_to_grab_{self.label}.txt', 'a') as out:
+        with open(f'{self.save_location}/logs/failed_to_grab_{self.label}.txt', 'a') as out:
             out.write('\n')
             json.dump(self.bib_info, out)
             out.write('\n')
             out.write('='*70)
 
         print(f'Failed to get PDF: {self.url}')
+
+
+class PanAfricanGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        fname = self.url.split('/')[-2]
+
+        new_url = self.url.replace('/full/', '/pdf/')
+
+        return f"{new_url}{fname}.pdf"
+
+
+class LiebertGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/doi/', '/doi/pdf/')
+
+        return new_url
+
+
+class JFoodGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/doi/', '/doi/pdf/')
+
+        return new_url
+
+
+class AkademiaiGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/doi/', '/doi/pdf/')
+
+        return new_url
+
+
+class SagePubGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/doi/', '/doi/pdf/')
+
+        return new_url
+
+
+class IJPSRGrabber(BaseGrabber):
+    """
+    Parse HTML and get PDF link
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        a_tag = [i for i in html.find_all('a') if i.get('href').endswith('.pdf')][0]
+
+        return a_tag.get('href')
+
+
+class MedwellGrabber(BaseGrabber):
+    """
+    Parse HTML and get PDF link
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        a_tag = html.find('a', string='Fulltext PDF')
+
+        return a_tag.get('href')
+
+
+class AJTMHGrabber(BaseGrabber):
+    """
+    Parse HTML and get PDF link
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        link = html.find("a", attrs={'class':"pdf"}).get('href')
+
+        return f"https://www.ajtmh.org{link}"
+
+
+class TandFGrabber(BaseGrabber):
+    """
+    Parse HTML and get PDF link
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        link = html.find("a", attrs={'class':"show-pdf"}).get('href')
+
+        return f"https://www.tandfonline.com{link}"
+
+
+class EKBGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class CDCGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class HumanKineticsGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class BiooneGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class JsavaGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class AJOLGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class SpringerOpenGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class IndianJournalsGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class FrontiersGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class HindawiGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+class ASMAEMGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+class OUPGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class JIDCGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class SciAlertGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/abstract/', '/qredirect.php')
+
+        return f"{new_url}&linkid=pdf"
+
+
+class EJManagerGrabber(BaseGrabber):
+    """
+    Extract window.location from Javascript redirect.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        # html = BeautifulSoup(data.content, 'lxml')
+        redirMatch = re.match(r'.*?window\.location\s*=\s*\"([^"]+)\"', str(data.content), re.M|re.S)
+
+        if (redirMatch and "http" in redirMatch.group(1)):
+            new_url = redirMatch.group(1)
+            return new_url
+        else:
+            return self.url
+
+
+class OJVRGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class CambridgeGrabber(BaseGrabber):
+    """
+    The HTML has a well-defined link to the PDF's direct url.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        data = requests.get(self.url)
+        html = BeautifulSoup(data.content, 'lxml')
+        meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+
+        return meta.attrs['content']
+
+
+class PlosGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        new_url = self.url.replace('/article?', '/article/file?')
+        return f"{new_url}&type=printable"
+
+
+class VetWorldGrabber(BaseGrabber):
+    """
+    Link to article needs URL changed to point to PDF.
+    """
+    def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
+        super().__init__(save_location, bib_info, label, url)
+
+    def fix_url(self):
+        return self.url.replace('.html', '.pdf')
 
 
 class BiomedcentralGrabber(BaseGrabber):
@@ -140,7 +661,11 @@ class AcademiaEduGrabber(BaseGrabber):
         referer = "https://scholar.google.co.uk/scholar?hl=en&as_sdt=0%2C5&q=academic+paper&btnG="
         headers = {'User-Agent': user_agent, 'referer': referer}
 
-        r = requests.get(url, headers=headers, allow_redirects=True)
+        try:
+            r = requests.get(url, headers=headers, allow_redirects=True)
+        except:
+            print(f'Error: {url}')
+            return None
 
         if 'pdf' in r.headers.get('content-type').lower():
             return r.content
