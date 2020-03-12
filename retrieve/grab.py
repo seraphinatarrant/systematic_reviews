@@ -3,8 +3,8 @@ import re
 import json
 import requests
 
-from bs4 import BeautifulSoup
 from pathlib import Path
+from bs4 import BeautifulSoup
 
 
 def download(searcher, output_folder):
@@ -169,8 +169,7 @@ class GrabOne:
                 self.grabber.log()
                 return
 
-
-            pdf_data = self.grabber.get_pdf()
+            pdf_data = self.grabber.get_pdf
 
             try:
                 self.grabber.write_pdf(pdf_data, filename)
@@ -213,7 +212,8 @@ class BaseGrabber:
     def get_pdf(self):
         url = self.fix_url()
 
-        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like " \
+                     "Firefox/3.5.5; Debian-3.5.5-1) "
         headers = {'User-Agent': user_agent}
 
         try:
@@ -255,12 +255,14 @@ class BaseGrabber:
 
         print(f'Failed to get PDF: {self.url}')
 
+
 class NoURL(BaseGrabber):
     """
     Dummy class for results with no URL
     """
     def __init__(self, save_location: str, bib_info: dict, label: str, url: str):
         super().__init__(save_location, bib_info, label, url)
+
 
 class CitationPDFURL(BaseGrabber):
     """
@@ -271,6 +273,7 @@ class CitationPDFURL(BaseGrabber):
 
     def fix_url(self):
         return self.url
+
 
 class PanAfricanGrabber(BaseGrabber):
     """
@@ -386,10 +389,10 @@ class AJTMHGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            link = html.find("a", attrs={'class':"pdf"})
-
+            link = html.find("a", attrs={'class': "pdf"})
             
             return f"https://www.ajtmh.org{link.get('href')}"
+
         except:
             return self.url
 
@@ -405,9 +408,10 @@ class TandFGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            link = html.find("a", attrs={'class':"show-pdf"})
+            link = html.find("a", attrs={'class': "show-pdf"})
 
             return f"https://www.tandfonline.com{link.get('href')}"
+
         except:
             return self.url
 
@@ -423,9 +427,10 @@ class EKBGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
+
         except:
             return self.url
 
@@ -440,7 +445,7 @@ class CDCGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
 
@@ -459,9 +464,10 @@ class HumanKineticsGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
+
         except:
             return self.url
 
@@ -477,9 +483,10 @@ class BiooneGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
+
         except:
             return self.url
 
@@ -495,9 +502,10 @@ class JsavaGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
+
         except:
             return self.url
 
@@ -513,7 +521,7 @@ class AJOLGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -531,7 +539,7 @@ class SpringerOpenGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -549,7 +557,7 @@ class IndianJournalsGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -567,7 +575,7 @@ class FrontiersGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -585,7 +593,7 @@ class HindawiGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -603,7 +611,7 @@ class ASMAEMGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -621,7 +629,7 @@ class OUPGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -639,7 +647,7 @@ class JIDCGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -670,15 +678,16 @@ class EJManagerGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             # html = BeautifulSoup(data.content, 'lxml')
-            redirMatch = re.match(r'.*?window\.location\s*=\s*\"([^"]+)\"', str(data.content), re.M|re.S)
+            redirmatch = re.match(r'.*?window\.location\s*=\s*\"([^"]+)\"', str(data.content), re.M|re.S)
 
-            if (redirMatch and "http" in redirMatch.group(1)):
-                new_url = redirMatch.group(1)
+            if redirmatch and "http" in redirmatch.group(1):
+                new_url = redirmatch.group(1)
                 return new_url
             else:
                 return self.url
         except:
             return self.url
+
 
 class OJVRGrabber(BaseGrabber):
     """
@@ -761,7 +770,7 @@ class SpringerGrabber(BaseGrabber):
         try:
             data = requests.get(self.url)
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
         except:
@@ -788,7 +797,8 @@ class AcademiaEduGrabber(BaseGrabber):
         super().__init__(save_location, bib_info, label, url)
 
     def get_pdf(self):
-        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like " \
+                     "Firefox/3.5.5; Debian-3.5.5-1) "
         referer = "https://scholar.google.co.uk/scholar?hl=en&as_sdt=0%2C5&q=academic+paper&btnG="
         headers = {'User-Agent': user_agent, 'referer': referer}
 
@@ -813,18 +823,20 @@ class WileyGrabber(BaseGrabber):
         super().__init__(save_location, bib_info, label, url)
 
     def fix_url(self):
-        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like " \
+                     "Firefox/3.5.5; Debian-3.5.5-1) "
         headers = {'User-Agent': user_agent}
 
         try:
             data = requests.get(self.url, headers=headers)
 
             html = BeautifulSoup(data.content, 'lxml')
-            meta = html.find('meta', attrs={"name":'citation_pdf_url'})
+            meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             new_url = meta.attrs['content']
 
             return new_url.replace('/doi/pdf/', '/doi/pdfdirect/')
+
         except:
             return self.url
 
@@ -837,7 +849,8 @@ class NIHGrabber(BaseGrabber):
         super().__init__(save_location, bib_info, label, url)
 
     def fix_url(self):
-        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like " \
+                     "Firefox/3.5.5; Debian-3.5.5-1) "
         headers = {'User-Agent': user_agent}
 
         try:
@@ -845,9 +858,10 @@ class NIHGrabber(BaseGrabber):
 
             html = BeautifulSoup(data.content, 'lxml')
 
-            meta = html.find('link', attrs={"type":'application/pdf'})
+            meta = html.find('link', attrs={"type": 'application/pdf'})
 
             return f"https://www.ncbi.nlm.nih.gov/{meta.attrs['href']}"
+
         except:
             return self.url
 
@@ -860,7 +874,8 @@ class ScieloGrabber(BaseGrabber):
         super().__init__(save_location, bib_info, label, url)
 
     def fix_url(self,):
-        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like Firefox/3.5.5; Debian-3.5.5-1)"
+        user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.5) Gecko/20091123 Iceweasel/3.5.5 (like " \
+                     "Firefox/3.5.5; Debian-3.5.5-1) "
         headers = {'User-Agent': user_agent}
 
         try:
@@ -871,5 +886,6 @@ class ScieloGrabber(BaseGrabber):
             meta = html.find('meta', attrs={"name": 'citation_pdf_url'})
 
             return meta.attrs['content']
+
         except:
             return self.url

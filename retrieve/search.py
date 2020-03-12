@@ -5,9 +5,10 @@ import requests
 import hashlib
 import argparse
 
+from grab import download
+
 from pathlib import Path
 from xml.etree import ElementTree as ET
-from grab import download
 
 from serpapi.google_scholar_search_results import GoogleScholarSearchResults  # Google Scholar
 

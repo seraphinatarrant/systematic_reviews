@@ -55,12 +55,17 @@ def process_pdf_folder(source_folder, output_folder):
     # Call pdfminer's script to extract all text from PDFs.
     # Automatically saved to output folder.
     for file in pdf_files:
+
         p = Path(file)
         new_name = p.stem + '.txt'
 
         pdf_bar.set_description_str(f'Converting PDF: {p.name}')
 
-        subprocess.run(['pdf2txt.py', '-o', f'{args.output_folder}/full_txt/{new_name}', file])
+        try:
+            subprocess.run(['pdf2txt.py', '-o', f'{args.output_folder}/full_txt/{new_name}', file])
+        except:
+            with open(f"{args.output_folder}/failed_to_extract.log", 'a') as log:
+                log.write(f'Could not extract text from: {file}\n')
 
         pdf_bar.update(1)
 
@@ -108,12 +113,16 @@ def process_pdf_folder(source_folder, output_folder):
 
         all_best[file] = best_matches
 
+    json_bar = tqdm.tqdm(total=len(all_best), desc='{desc}', position=2)
+
     # Save the sections to JSON
     for full_path, sections in all_best.items():
         p = Path(full_path)
         new_name = p.stem + '.json'
 
         all_data = {'file':p.name, 'data':{}}
+
+        json_bar.set_description_str(f'Saving to JSON: {p.name}')
 
         for section, text in sections.items():
 
@@ -125,8 +134,11 @@ def process_pdf_folder(source_folder, output_folder):
 
             all_data['data'][section]['sentences'] = sentences
 
+        json_bar.update(1)
+
         with open(f"{args.output_folder}/sections_json/{new_name}", 'w') as f:
             json.dump(all_data, f, indent=5)
+
 
 def combine_json_and_bibinfo(source_folder, bibinfo_folder):
     """
@@ -155,7 +167,6 @@ def combine_json_and_bibinfo(source_folder, bibinfo_folder):
 
         with open(source, 'w') as f:
             json.dump(source_j, f, indent=5)
-
 
 
 if __name__ == '__main__':
