@@ -9,13 +9,13 @@
 
 Script to submit query to one of four search engines. Generates JSON for results and will also download all PDFs of results, where possible.
 
--source 	:  Search engine to use, choices=['google', 'wos', 'pubmed', 'scopus'],
--output 	:  Filename for json output
--pdf_folder :  Path to save PDFs to
--max 		:  Max number of hits to return
--label 		:  Label for search query, such as disease. Used to name certain output files.
--search 	:  Search terms to us
--range 		:  default=[2015, 2020], Limit results to papers from these years, inclusive.
+- source 	:  Search engine to use, choices=['google', 'wos', 'pubmed', 'scopus']
+- output 	:  Filename for json output
+- pdf_folder :  Path to save PDFs to
+- max 		:  Max number of hits to return
+- label 		:  Label for search query, such as disease. Used to name certain output files.
+- search 	:  Search terms to us
+- range 		:  default=[2015, 2020], Limit results to papers from these years, inclusive.
 
 ## grab.py
 
