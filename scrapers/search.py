@@ -1,48 +1,79 @@
-import os
 import json
 import tqdm
 import datetime
+import requests
+import hashlib
+import argparse
 
+from pathlib import Path
 from xml.etree import ElementTree as ET
+from grab import download
 
-import scholarly  # Google Scholar
-import pybliometrics as pb # Scopus
-import wos # Web of Knowledge
-import pymed # PubMed
+from serpapi.google_scholar_search_results import GoogleScholarSearchResults  # Google Scholar
 
-import sys
+with open('/home/alexander/Dropbox/sebi_information_retrieval/scrapers/serpapi_key.txt') as f:
+    # Load the API key for serpapi
+    GoogleScholarSearchResults.SERP_API_KEY = f.read().strip()
 
-sys.path.append('..')
-from api.citoid_api import get_citation_data
+import pybliometrics as pb  # Scopus
+import wos  # Web of Knowledge
+import pymed  # PubMed
+
+
+def query_and_run(source: str, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
+    """
+    :param source: search engine to query (google, wos, scopus, pubmed)
+    :param label: a reference label for this query (e.g. brucellosis_sheep_nigeria)
+    :param search_phrase: the actual search query. This should match the syntax of the source you are using!
+    :param date_range: Restrict results to (start_year, end_year), e.g. (2012, 2018)
+    :param results_file: Name of the json file to save all results in
+    :param max_results: Maximum number of results you want.
+    :return: Query object
+
+    Returns the Query object, which is then passed to grab.GrabAll class to download the PDFs of the results.
+    """
+
+
+    all_sources = {'google': GoogleScholar, 'wos': WoS, 'scopus': Scopus, 'pubmed': PubMed}
+
+    selection = all_sources[source]
+
+    searcher = selection(label=label,
+                         search_phrase=search_phrase,
+                         date_range=date_range,
+                         results_file=results_file,
+                         max_results=max_results)
+
+    searcher.run()
+
+    return searcher
 
 
 class Query:
-    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_dir: str, results_file: str, max_results: int):
+    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
         self.label = label
+
         self.search_phrase = search_phrase
+
         self.start_date, self.end_date = date_range
-        if results_file.endswith('.json'):
-            self.results_file = results_file.split('.json')[0]
-        else:
-            self.results_file = results_file
 
-        os.makedirs(results_dir, exist_ok=True)
-        self.results_dir = results_dir
+        self.results_file = Path(results_file).expanduser()
 
-        self.n = max_results
+        self.max_results = max_results
 
         self.processed_results = None
 
         self.source = None
 
-        self.data = {'metadata':{'source':None,
-                                         'label':self.label,
-                                         'search_phrase':self.search_phrase,
-                                         'date_range':[self.start_date, self.end_date]
-                                 },
-                     'results':None
-                    }
-
+        self.data = {'metadata': {'source': self.source,
+                                  'label': self.label,
+                                  'search_phrase': self.search_phrase,
+                                  'date_range': [self.start_date, self.end_date],
+                                  'query_datetime': datetime.datetime.now().strftime("%d-%b-%Y_%H:%M:%S"),
+                                  'max_results': self.max_results,
+                                  },
+                     'results': None
+                     }
 
     def search(self):
         raise NotImplementedError
@@ -51,12 +82,12 @@ class Query:
         raise NotImplementedError
 
     def save_to_json(self):
-        now = datetime.datetime.now()
-        stamp = now.strftime("%d-%b-%Y_%H-%M-%S")
+        print(f"Saving results to: {self.results_file}")
 
-        print(f"Saving results to: {stamp}_{self.results_file}.json")
+        if self.results_file.parent.parts:
+            self.results_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(f"{self.results_dir}/{stamp}_{self.results_file}.json", 'w') as o:
+        with open(self.results_file, 'w') as o:
             json.dump(self.data, o, indent=5)
 
         print(f"Done!")
@@ -67,62 +98,91 @@ class Query:
         if self.search_results:
             self.data['results'] = self.process_results(self.search_results)
         else:
+            self.data['results'] = None
             print('No results found...')
 
         self.save_to_json()
 
 
 class GoogleScholar(Query):
-    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_folder: str, max_results: int):
-        super().__init__(label, search_phrase, date_range, results_folder, max_results)
+    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
+        super().__init__(label, search_phrase, date_range, results_file, max_results)
 
         self.source = 'Google_Scholar'
         self.data['metadata']['source'] = 'Google_Scholar'
 
     def search(self):
+        params = {"q": self.search_phrase,
+                  "hl": "en"
+                  }
+
         if all([self.start_date, self.end_date]):
-            custom_url = f"/scholar?q={self.search_phrase}&hl=en&as_sdt=0%2C5&as_ylo={self.start_date}&as_yhi={self.end_date}"
-            results = scholarly.search_pubs_custom_url(custom_url)
+            params["as_ylo"] = self.start_date
+            params["as_yhi"] = self.end_date
+
+        client = GoogleScholarSearchResults(params)
+
+        results = client.get_dict()
+
+        if results.get('error'):
+            return
+
+        if int(results['search_information']['total_results']) < self.max_results:
+            new_max = int(results['search_information']['total_results'])
         else:
-            results = scholarly.search_pubs_query(self.search_phrase)
+            new_max = self.max_results
 
-        if results:
-            return results
-        else:
-            raise Exception("No results were returned. This is likely due to rate limits!")
+        all_results = [i for i in results['organic_results']]
 
-    def process_results(self, search_results, save, n):
-        all_dicts = []
+        for i in all_results:
+            if i.get('link', None):
+                i['url'] = i['link']
+                i['saved_pdf_name'] = hashlib.md5(i['link'].encode()).hexdigest() + '.pdf'
+            else:
+                i['url'] = "http://none"
+                i['saved_pdf_name'] = hashlib.md5(i['title'].encode()).hexdigest() + '.pdf'
 
-        with tqdm.tqdm(total=n) as pbar:
-            for e, r in enumerate(search_results, 1):
-                try:
-                    r.fill()
-                except:
-                    # Probably a 403 error on accessing the Bibtex URL
-                    # Should make this more specific.
-                    pass
+        if results['search_information']['total_results'] <= self.max_results:
+            return all_results
 
-                r_dict = r.__dict__
+        while len(all_results) < new_max:
+            if results.get('serpapi_pagination'):
+                pass
+            else:
+                return all_results
 
-                if type(r_dict['bib']['abstract']) != str:
-                    r_dict['bib']['abstract'] = r_dict['bib']['abstract'].text
+            results = requests.get(results['serpapi_pagination']['next_link'])
 
-                all_dicts.append(r_dict)
+            results = json.loads(results.content)
 
-                pbar.update(1)
+            for i in results['organic_results']:
+                if i.get('link', None):
+                    i['url'] = i['link']
+                    i['saved_pdf_name'] = hashlib.md5(i['link'].encode()).hexdigest() + '.pdf'
+                else:
+                    i['url'] = "http://none"
+                    i['saved_pdf_name'] = hashlib.md5(i['title'].encode()).hexdigest() + '.pdf'
 
-                if e == n:
+                all_results.append(i)
+
+                if len(all_results) == new_max:
                     break
 
-        return all_dicts
+        return all_results
+
+    def process_results(self, search_results):
+
+        with tqdm.tqdm(total=len(search_results)) as pbar:
+            for i in search_results:
+                pbar.update(1)
+
+        return search_results
 
 
 class WoS(Query):
-    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_dir: str, results_file: str, max_results: int):
-        super().__init__(label, search_phrase, date_range, results_dir, results_file, max_results)
+    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
+        super().__init__(label, search_phrase, date_range, results_file, max_results)
         self.original_search_phrase = search_phrase
-
 
         self.start_date = date_range[0]
         self.end_date = date_range[1]
@@ -135,8 +195,6 @@ class WoS(Query):
         self.source = 'WoS'
         self.data['metadata']['source'] = 'WoS'
 
-
-
     def run(self):
         self.search_results = self.search()
 
@@ -147,7 +205,6 @@ class WoS(Query):
 
         self.save_to_json()
 
-
     def search(self):
         client = wos.WosClient(lite=True)
 
@@ -155,8 +212,8 @@ class WoS(Query):
 
         count = 100
 
-        if self.n < count:
-            count = self.n
+        if self.max_results < count:
+            count = self.max_results
 
         all_results = []
 
@@ -170,14 +227,14 @@ class WoS(Query):
             print(f"Total matches found: {max_total}")
 
             for r in tree.findall('.//records'):
-                if len(all_results) == self.n:
+                if len(all_results) == self.max_results:
                     break
                 else:
                     all_results.append(r)
 
             loops = round(max_total / count)
 
-            if loops in {0,1}:
+            if loops in {0, 1}:
                 # We only needed one loop, so have got all we can, so return it.
                 print(f'\tTotal papers grabbed: {len(all_results)}')
                 return all_results
@@ -185,15 +242,14 @@ class WoS(Query):
             for loop in range(loops - 1):
                 offset = offset + 1 + count
 
-                result = wos.utils.query(c, search, count=count, offset=offset)
+                result = wos.utils.query(c, self.search_phrase, count=count, offset=offset)
 
                 tree = ET.fromstring(result)
 
                 for r in tree.findall('.//records'):
                     all_results.append(r)
 
-                    if len(all_results) == self.n:
-
+                    if len(all_results) == self.max_results:
                         return all_results
 
     def process_results(self, results):
@@ -205,8 +261,9 @@ class WoS(Query):
 
                 keywords = [i.text for i in r.findall('keywords/value')]
 
-                pub_info = {k:v for k, v in
-                            zip([i.text for i in r.findall('source/label')], [i.text for i in r.findall('source/value')])}
+                pub_info = {k: v for k, v in
+                            zip([i.text for i in r.findall('source/label')],
+                                [i.text for i in r.findall('source/value')])}
 
                 authors = [i.text for i in r.findall('authors/value')]
 
@@ -221,14 +278,26 @@ class WoS(Query):
 
                 pbar.update(1)
 
-                r_dict = {'title':title,
-                          'keywords':keywords,
-                          'authors':authors,
+                r_dict = {'title': title,
+                          'keywords': keywords,
+                          'authors': authors,
                           }
 
                 r_dict.update(pub_info)
 
                 r_dict.update(other)
+
+                r_dict['url'] = "http://none"
+                r_dict['saved_pdf_name'] = "None"
+
+                if r_dict.get('Identifier.Doi', None):
+                    r_dict['url'] = f"http://dx.doi.org/{r_dict['Identifier.Doi']}"
+                    r_dict['saved_pdf_name'] = r_dict['Identifier.Doi'].replace('/', '_') + '.pdf'
+                else:
+                    if r_dict.get('Identifier.Xref_Doi', None):
+                        r_dict['url'] = f"http://dx.doi.org/{r_dict['Identifier.Xref_Doi']}"
+                        r_dict['saved_pdf_name'] = r_dict['Identifier.Xref_Doi'].replace('/', '_') + '.pdf'
+
 
                 all_dicts.append(r_dict)
 
@@ -236,8 +305,8 @@ class WoS(Query):
 
 
 class Scopus(Query):
-    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_dir: str, results_file: str, max_results: int):
-        super().__init__(label, search_phrase, date_range, results_dir, results_file, max_results)
+    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
+        super().__init__(label, search_phrase, date_range, results_file, max_results)
         self.original_search_phrase = search_phrase
         self.search_phrase = f"TITLE-ABS-KEY({search_phrase})"
 
@@ -256,13 +325,15 @@ class Scopus(Query):
         else:
             raise Exception("No results were returned.")
 
-    def process_results(self, results, n=500):
+    def process_results(self, results):
         all_dicts = []
 
-        if len(results) < n:
+        if len(results) < self.max_results:
             n = len(results)
+        else:
+            n = self.max_results
 
-        with tqdm.tqdm(total=n) as pbar:
+        with tqdm.tqdm(total=len(results)) as pbar:
             for e, r in enumerate(results, 1):
                 r_dict = dict(r._asdict())
 
@@ -270,7 +341,7 @@ class Scopus(Query):
                     r_dict['url'] = f"http://dx.doi.org/{r_dict['doi']}"
                     r_dict['saved_pdf_name'] = r_dict['doi'].replace('/', '_') + '.pdf'
                 else:
-                    r_dict['url'] = None
+                    r_dict['url'] = "http://none"
                     r_dict['saved_pdf_name'] = 'None.pdf'
 
                 all_dicts.append(r_dict)
@@ -284,8 +355,8 @@ class Scopus(Query):
 
 
 class PubMed(Query):
-    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_dir: str, results_file: str, max_results: int):
-        super().__init__(label, search_phrase, date_range, results_dir, results_file, max_results)
+    def __init__(self, label: str, search_phrase: str, date_range: tuple, results_file: str, max_results: int):
+        super().__init__(label, search_phrase, date_range, results_file, max_results)
         self.search_phrase = search_phrase
 
         self.source = 'PubMed'
@@ -297,19 +368,21 @@ class PubMed(Query):
         if all([self.start_date, self.end_date]):
             year_search_phrase = f'{self.search_phrase} AND ("{self.start_date}"[Date - Publication] : "{self.end_date}"[Date - Publication])'
 
-            results = pubmed.query(year_search_phrase, max_results=500)
+            results = pubmed.query(year_search_phrase, max_results=self.max_results)
         else:
-            results = pubmed.query(self.search_phrase, max_results=500)
+            results = pubmed.query(self.search_phrase, max_results=self.max_results)
 
         return [r.toDict() for r in results]
 
-    def process_results(self, results, n=500):
+    def process_results(self, results):
         all_dicts = []
 
-        if len(results) < n:
+        if len(results) < self.max_results:
             n = len(results)
+        else:
+            n = self.max_results
 
-        with tqdm.tqdm(total=n) as pbar:
+        with tqdm.tqdm(total=len(results)) as pbar:
             for e, r_dict in enumerate(results, 1):
                 if r_dict.get('xml'):
                     del r_dict['xml']
@@ -333,3 +406,33 @@ class PubMed(Query):
 
         return all_dicts
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-source', type=str, choices=['google', 'wos', 'pubmed', 'scopus'], help='Search engine to use')
+    parser.add_argument('-output', type=str, help='Filename for json output')
+    parser.add_argument('-pdf_folder', type=str, help='Path to save PDFs to')
+    parser.add_argument('-max', type=int, help='Max number of hits to return')
+    parser.add_argument('-label', type=str, help='Label for search query')
+    parser.add_argument('-search', type=str, help='Search terms to use')
+    parser.add_argument('-range', nargs='+', type=int, default=[2015, 2020],
+                        help='Limit results to papers from these years, inclusive. Format: YYYY-YYYY')
+
+    args = parser.parse_args()
+
+    print(f'Submitting {args.label} query...')
+
+    sources = {'google': GoogleScholar, 'wos': WoS, 'scopus': Scopus, 'pubmed': PubMed}
+
+    source = sources[args.source]
+
+    searcher = source(label=args.label,
+                      search_phrase=args.search,
+                      date_range=args.range,
+                      results_file=args.output,
+                      max_results=args.max)
+
+    searcher.run()
+
+    download(searcher, args.pdf_folder)
