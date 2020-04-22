@@ -14,3 +14,8 @@ __pycache__
 *.pkl
 .idea/
 .vector_cache/
+
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+**/**/.ipynb_checkpoints/
+**/**/**/.ipynb_checkpoints/

@@ -5,13 +5,16 @@ import json
 import tqdm
 import spacy
 import argparse
+import cleantext
 import subprocess
 
 from pathlib import Path
 
+
 hyphenspace = re.compile(r'-\s')
 nls = re.compile(r'(?<![\r\n])(\r?\n|\n?\r)(?![\r\n])')
 spaces = re.compile(r'\s+')
+
 
 nlp = spacy.load('en_core_web_sm')
 
@@ -23,6 +26,11 @@ def clean_text(text):
 
     Basic text cleaner for PDF-extracted content.
     """
+
+    # Remove weird ligatures with spaces
+    text = text.replace('ﬂ ', 'fl').replace('ﬁ ', 'fi').replace('ﬀ ', 'ff')
+
+    clean = hyphenspace.sub('', text)
     # Remove word-internal linebreaks
     clean = hyphenspace.sub('', text)
     # Remove random newlines
@@ -30,10 +38,13 @@ def clean_text(text):
     # Remove multiple consecutive spaces
     clean = spaces.sub(' ', clean)
 
+    # Other random stuff
+    clean = cleantext.clean(clean, lower=False)
+
     return clean
 
 
-def process_pdf_folder(source_folder, output_folder):
+def process_pdf_folder(source_folder, output_folder, extract=True):
     """
     :param source_folder: str
     :param output_folder: str - where to save the extracted full text (.txt) and paper sections (.json)
@@ -54,24 +65,24 @@ def process_pdf_folder(source_folder, output_folder):
 
     # Call pdfminer's script to extract all text from PDFs.
     # Automatically saved to output folder.
-    for file in pdf_files:
+    if extract:
+        for file in pdf_files:
+            p = Path(file)
+            new_name = p.stem + '.txt'
 
-        p = Path(file)
-        new_name = p.stem + '.txt'
+            pdf_bar.set_description_str(f'Converting PDF: {p.name}')
 
-        pdf_bar.set_description_str(f'Converting PDF: {p.name}')
+            try:
+                subprocess.check_output(['pdf2txt.py', '-o', f'{args.output_folder}/full_txt/{new_name}', file])
+            except:
+                with open(f"{args.output_folder}/failed_to_extract.log", 'a') as log:
+                    log.write(f'Could not extract text from: {file}\n')
 
-        try:
-            subprocess.run(['pdf2txt.py', '-o', f'{args.output_folder}/full_txt/{new_name}', file])
-        except:
-            with open(f"{args.output_folder}/failed_to_extract.log", 'a') as log:
-                log.write(f'Could not extract text from: {file}\n')
-
-        pdf_bar.update(1)
+            pdf_bar.update(1)
 
     tqdm.tqdm.write('Extracting sections from text files...')
 
-    txt_files = glob.glob( f'{args.output_folder}/full_txt/*.txt')
+    txt_files = glob.glob(f'{args.output_folder}/full_txt/*.txt')
 
     # Load the regular expressions for extracting sections
     with open('regex_dict.json', 'r') as f:
@@ -84,6 +95,7 @@ def process_pdf_folder(source_folder, output_folder):
     # Clean the text and extract sections.
     for file in txt_files:
         p = Path(file)
+
         with open(file) as f:
             t = f.read()
             t = clean_text(t)
@@ -120,12 +132,11 @@ def process_pdf_folder(source_folder, output_folder):
         p = Path(full_path)
         new_name = p.stem + '.json'
 
-        all_data = {'file':p.name, 'data':{}}
+        all_data = {'file': p.name, 'data': {}}
 
         json_bar.set_description_str(f'Saving to JSON: {p.name}')
 
         for section, text in sections.items():
-
             all_data['data'][section] = {'text': text}
 
             doc = nlp(text)
@@ -180,4 +191,3 @@ if __name__ == '__main__':
     process_pdf_folder(args.source_folder, args.output_folder)
 
     combine_json_and_bibinfo(args.output_folder, args.bibinfo_folder)
-
