@@ -1,110 +1,88 @@
-import re
+import argparse
+import os
+import spacy
 import glob
 import json
-import tqdm
-import argparse
-import subprocess
 
+from operator import itemgetter
 from pathlib import Path
 
-hyphenspace = re.compile('-\s')
-nls = re.compile('(?<![\r\n])(\r?\n|\n?\r)(?![\r\n])')
-spaces = re.compile('\s+')
+import pandas as pd
 
-def clean_text(text):
-    #Remove word-internal linebreaks
-    clean = hyphenspace.sub('', text)
-    #Remove random newlines
-    clean = nls.sub(' ', clean)
-    #Remove multiple consecutive spaces
-    clean = spaces.sub(' ', clean)
+nlp = spacy.load('test')
 
-    return clean
+
+def add_categories_to_json(json_data, model=nlp):
+    json_copy = dict(json_data)
+
+    for section in json_copy['data']:
+        if json_copy['data'].get(section):
+            for e, sent in enumerate(model.pipe(json_copy['data'][section]['sentences'])):
+                categories = sent.cats
+                json_copy['data'][section]['sentences'][e] = {'text':sent.text, 'categories':categories}
+
+    return json_copy
+
+
+def get_top_sent_per_category(json_data, n=3):
+    cats = ['SPECIES', 'DIAGNOSTIC_TEST', 'DATE_DATA', 'NUMBER_TESTED', 'SAMPLE', 'NUMBER_POSITIVE', 'DISEASE',
+            'NOT_RELEVANT', 'STATE']
+    sections = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion']
+
+    results = {k:[] for k in cats}
+
+    seen_sents = set()
+
+    for sect in sections:
+
+        if json_data['data'].get(sect):
+            sents = json_data['data'][sect]['sentences']
+        else:
+            continue
+
+        for sent in sents:
+            if sent['text'] in seen_sents:
+                continue
+
+            seen_sents.add(sent['text'])
+
+            for cat, score in sent['categories'].items():
+                if score > 0.0:
+                    results[cat].append((score, sect, sent['text']))
+
+    for k, v in results.items():
+        results[k] = sorted(v, key=itemgetter(0), reverse=True)[0:n]
+
+    results['bib_info'] = json_data['bib_info']
+
+    return results
+
+def create_csv(results):
+    pass
+
+
+
+
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Convert PDF to text')
-    parser.add_argument('source_folder', help='Location of PDFs')
-    parser.add_argument('output_folder', help='Where to save the text files')
+    parser = argparse.ArgumentParser(description='Extract data from abstracts of papers')
+    parser.add_argument('json_folder', help='Location of paper section JSONs')
+    parser.add_argument('output_folder', help='Folder for storing the extracted data files')
 
     args = parser.parse_args()
 
-    pdf_files = glob.glob(f"{args.source_folder}/*.pdf")
+    os.makedirs(Path(args.output_folder).expanduser(), exist_ok=True)
 
-    pdf_bar = tqdm.tqdm(total=len(pdf_files), desc='{desc}', position=0)
+    json_files = (glob.glob(f"{args.json_folder}/*.json"))
 
-    # Call pdfminer's script to extract all text from PDFs.
-    # Automatically saved to output folder.
-    for file in pdf_files:
-        p = Path(file)
-
-        pdf_bar.set_description_str(f'Converting PDF: {file}')
-
-        subprocess.run(['pdf2txt.py', '-o', f'{args.output_folder}/{p.stem}.txt', file])
-
-        pdf_bar.update(1)
-
-    tqdm.tqdm.write('Extracting sections from text files...')
-
-    txt_files = glob.glob( f'{args.output_folder}/*.txt')
-
-    # Load the regular expressions for extracting sections
-    with open('regex_dict.json', 'r') as f:
-        chain_dict = json.load(f)
-
-    all_best = {}
-
-    main_bar = tqdm.tqdm(total=len(txt_files), desc='{desc}', position=1)
-
-    # Clean the text and extract sections.
-    for file in txt_files:
+    for file in json_files:
         with open(file) as f:
-            t = f.read()
-            t = clean_text(t)
+            json_data = json.load(f)
 
-        main_bar.set_description_str(f'Extracting text: {file}')
+        json_data_augmented = add_categories_to_json(json_data)
 
-        best_matches = {}
+        results = get_top_sent_per_category(json_data_augmented)
 
-        for k in chain_dict:
-            finds = False
-            best = None
-
-            for a in chain_dict[k]:
-                m = re.search(a, t)
-                if m:
-                    finds = True
-
-                    if best:
-                        if m.span()[1] - m.span()[0] < best.span()[1] - best.span()[0]:
-                            best = m
-                    else:
-                        best = m
-            if best:
-                best_matches[k] = best.group(k)
-
-        main_bar.update(1)
-
-        all_best[file] = best_matches
-
-    # Save the sections to JSON
-    for full_path, sections in all_best.items():
-        p = Path(full_path)
-        new_name = p.stem + '.json'
-
-        all_data = {'file':p.name, 'data':{}}
-
-        for section, text in sections.items():
-
-            all_data['data'][section] = {'text': text}
-
-        with open(f"{args.output_folder}/{new_name}", 'w') as f:
-            json.dump(all_data, f, indent=5)
-
-
-
-
-
-
-
-
-
+        with open(f"{args.output_folder}/{results['bib_info']['saved_pdf_name'].replace('.pdf', '.json')}", 'w') as f:
+            json.dump(results, f, indent=5)

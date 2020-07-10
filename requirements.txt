@@ -1,3 +1,5 @@
+clean-text[gpl]
+spacy
 pybliometrics
 dateutil
 numpy
