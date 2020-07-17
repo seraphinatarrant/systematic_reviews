@@ -58,7 +58,9 @@ def upload_attachments(z_library, docs: List[Document]):
     print("Uploading attachments for {} Documents...".format(len(docs)))
     # TODO see if can do this in batch mode
     for doc in docs:
-        response = z_library.attachment_simple(doc.filepath, parentid=doc.get_id())
+        if not doc.filepath:
+            continue
+        response = z_library.attachment_simple(doc.filepath, parentid=doc.get_z_id())
         # only need to do something with response if also want to store attachment id
 
 def create_new_docs(z_library, docs: List[Document], add_attachments=False, collection_ids=None):
@@ -89,13 +91,14 @@ def update_doc_collections(z_library, doc_data: Dict, remove: Dict=None, add: Di
                            remove_all=False):
     """takes a document json and dicts of name2id for collections to add and remove, and updates in zotero"""
     #TODO work out how to support nested collections
-    if remove_all:
+    # TODO add handling for keyerrors in collection names
+    if remove_all: # if True, removes document from all other collections save those specified
         collections_list = []
     else:
         collections_list = [col for col in doc_data["data"]["collections"]
                             if col not in list(remove.values())]
     collections_list.extend(list(add.values()))
-    doc_data["data"]["collections"] = collections_list
+    doc_data["data"]["collections"] = collections_list # TODO PICK UP HERE doc_data doesn't appear to have collections
     z_library.update_item(doc_data)
     print("Document {} has been updated from {} collections to {}".format(
         doc_data["data"]["title"], remove.keys(), remove.keys()))

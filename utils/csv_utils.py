@@ -5,11 +5,15 @@ from typing import List
 import os
 
 from api.zotero_api import auth_zotero_library, get_collection_names_and_IDs, get_all_collections, \
-    get_by_id, update_doc_collections
+    get_by_id, update_doc_collections, create_new_docs, remove_duplicates
+from api.citoid_api import get_citation_data
+from general_utils import find_file, make_pdf_name
+from library_collections.document import Document, FileType, Label, Source
 
 
 ### Globals for reading and writing CSVs
 TRAINING_DATA_HEADERS = ["Title", "Abstract", "ID", "DOI", "Label"]
+TRAINING_DATA_LABEL_MAPPING = {"e": "exclude", "i": "include"}
 TEXT_EXTRACTION_HEADERS = ["ROW_NUMBER", "IDENTIFIER", "YEAR_PUBLICATION", "REFERENCE",
                            "START_DATE_DATA", "END_DATE_DATA", "STATE", "ECOSYSTEM",
                            "PRODUCTION_SYSTEM", "SPECIES", "AGE", "AGE_DETAIL", "DISEASE", "SAMPLE",
@@ -17,6 +21,7 @@ TEXT_EXTRACTION_HEADERS = ["ROW_NUMBER", "IDENTIFIER", "YEAR_PUBLICATION", "REFE
                            "PERCENTAGE", "CALCULATION", "COMMENTS", "SOURCE"]
 CLASSIFIER_HEADERS = ["Title", "Abstract", "ID", "DOI", "Label",
                        "Confidence", "Correction"]
+PDF_DIR = "../PDFs/"
 
 
 def make_csv_name(doc_path, prefix):
@@ -58,7 +63,7 @@ def make_document_csv(all_documents:List, csv_path:str, csv_format:str):
 #TODO zotero upload to different training data folders per region
 def read_document_csv(csv_path:str, csv_format:str, z_library):
     # get zotero collections
-    z_collections = get_collection_names_and_IDs(get_all_collections())
+    z_collections = get_collection_names_and_IDs(get_all_collections(z_library))
 
     with open(csv_path, "r", newline="") as csvfile:
         # TODO probably could compress both formats into one
@@ -66,10 +71,32 @@ def read_document_csv(csv_path:str, csv_format:str, z_library):
             # when training data is read in, the document may or may not exist in Zotero, and all previous collections (labels) will be wiped
             HEADERS = ["Title", "Abstract", "ID", "Zotero_ID", "Label"]  # TODO move this to a global dict where headers are looked up from an enum
             csv_reader = csv.DictReader(csvfile, fieldnames=HEADERS)
+            new_docs = dict.fromkeys(TRAINING_DATA_LABEL_MAPPING.values(), []) # keys are labels
             for row in csv_reader:
-                doc_data = get_by_id(z_library,row.get("Zotero_ID")) # TODO add handling for if doesn't exist
-                update_doc_collections(z_library, doc_data,
-                                       add={row["Label"]: z_collections[row["Label"]]}, remove_all=True)
+                label = TRAINING_DATA_LABEL_MAPPING.get(row.get("Label"))
+                if not label:
+                    continue
+                if row.get("Zotero_ID"): # doc already exists in zotero, and we want to update the label it has/collections it is in
+                    doc_data = get_by_id(z_library,row.get("Zotero_ID")) # TODO add handling for if doesn't exist remotely
+                    update_doc_collections(z_library, doc_data,
+                                           add={label: z_collections[label]},
+                                           remove_all=True)
+                elif row.get("DOI"): # add new document to Zotero
+                    doi = row.get("DOI")
+                    citation_data = get_citation_data(doi)
+                    new_doc = Document(source=Source.journal, file_type=FileType.pdf, doi=doi)
+                    new_doc.set_info_from_citation(citation_data)
+                    new_doc.set_gold_label(Label.label)
+                    new_doc.filepath = find_file(PDF_DIR, make_pdf_name(doi))
+                    new_docs[label].append(new_doc)
+
+                # check if anything in new_docs, and upload to zotero
+                for label in new_docs:
+                    create_new_docs(z_library, new_docs[label], add_attachments=True,
+                                    collection_ids=[label])
+                # run remove duplicates
+                remove_duplicates(z_library)
+
             print("Updated {} documents".format(len(csv_reader)))
 
         if csv_format == "classifier_output":
@@ -107,9 +134,32 @@ def combine_csvs(dirpath):
                 # TODO validate that correct fieldnames exist
 
 
+def format_dict_values(d: dict):
+    for key in d:
+        if type(d[key]) == list:
+            if d[key]:
+                d[key] = ",".join(d[key])
+            else:
+                d[key] = ""
+
+
+def write_csv_from_dicts(csv_path: str, list_of_dicts: List[dict]):
+    with open(csv_path, "w", newline='') as csv_out:
+        csv_w = csv.DictWriter(csv_out, fieldnames=TEXT_EXTRACTION_HEADERS)
+        csv_w.writeheader()
+        row_num = 1
+        for d in list_of_dicts:
+            d["ROW_NUMBER"] = row_num
+            row_num += 1
+            format_dict_values(d)
+            csv_w.writerow(d)
+
 
 if __name__ == "__main__":
-    directories = ["PDFs/new_training_data/Ethiopia_scopus", "PDFs/new_training_data/Nigeria_scopus",
-                   "PDFs/new_training_data/Ethiopia_wos", "PDFs/new_training_data/Tanzania_scopus"]
+    directories = [
+        "PDFs/new_training_data_v2/wos_Nigeria/json", "PDFs/new_training_data_v2/pubmed_Nigeria/json",
+        "PDFs/new_training_data_v2/wos_Tanzania/json", "PDFs/new_training_data_v2/pubmed_Tanzania/json",
+        "PDFs/new_training_data_v2/pubmed_Ethiopia/json"
+                   ]
     for directory in directories:
         combine_csvs(directory)

@@ -45,38 +45,53 @@ if __name__ == "__main__":
     z_config = read_yaml_config(args.zotero_config_file)
     z_library = auth_zotero_library(z_config)
     config = read_yaml_config(args.config_file)
-    # check what type of training data reading in
-    if config.get("input_json"):
-        input_docs = [config.get("input_json")]
-    elif config.get("input_dir"): # search for all json files in directory and subdirs.
-        input_docs = []
-        for dirpath, dirnames, filenames in os.walk(config.get("input_dir")):
-            if filenames:
-                for filename in filenames:
-                    if os.path.splitext(filename)[1] != ".json":
-                        continue
-                    input_docs.append(os.path.join(dirpath, filename))
+    mode = config.get("mode")
+    # check whether in read mode or write mode (see config for explanations)
+    if mode == "write":
+        config = config["write_mode"]
+        # check what type of training data reading in
+        if config.get("input_json"):
+            input_docs = [config.get("input_json")]
+        elif config.get("input_dir"): # search for all json files in directory and subdirs.
+            input_docs = []
+            for dirpath, dirnames, filenames in os.walk(config.get("input_dir")):
+                # hardcode skipping some subdirs
+                if os.path.split(dirpath)[1] == "pdf":
+                    continue
+                if filenames:
+                    for filename in filenames:
+                        if os.path.splitext(filename)[1] != ".json":
+                            continue
+                        input_docs.append(os.path.join(dirpath, filename))
+        else:
+            sys.exit("Need to specify 'input_json' or 'input_dir' in config file if in Write mode")
+
+        for doc in input_docs:
+            print("Extracting metadata for {}...".format(doc))
+            all_documents = Document.from_json(doc, batch=True)
+            #create_new_docs(z_library, all_documents, add_attachments=True, collection_ids=)
+            if not all_documents:
+                print("No data contained in {}, skipping".format(doc))
+                continue
+            if config.get("require_abstracts", False):
+                #remove ones without abstracts and print in case we want to do something about it
+                valid_documents = list(filter(lambda d: d.abstract, all_documents))
+                if len(all_documents) - len(valid_documents) > 0:
+                    print("{} of {} documents were fetched but their abstracts were not".format(
+                        len(all_documents) - len(valid_documents), len(valid_documents)), file=sys.stderr)
+
+            print("Writing a csv of {} documents".format(len(all_documents)))
+            csv_path = make_csv_name(doc, config.get("csv_prefix"))
+            make_document_csv(all_documents, csv_path, "training_data")
+
+    elif mode == "read":
+        print("Loading in CSV")
+        config = config["read_mode"]
+        read_document_csv(config.get("csv_path"), "training_data", z_library)
+
     else:
-        sys.exit("Need to specify 'input_json' or 'input_dir' in config file")
+        sys.exit("Invalid entry in config file for mode")
 
-    for doc in input_docs:
-        print("Extracting metadata for {}...".format(doc))
-        all_documents = Document.from_json(doc, batch=True)
-        #create_new_docs(z_library, all_documents, add_attachments=True, collection_ids=)
-        if not all_documents:
-            print("No data contained in {}, skipping".format(doc))
-            continue
-        if config.get("require_abstracts", False):
-            #remove ones without abstracts and print in case we want to do something about it
-            valid_documents = list(filter(lambda d: d.abstract, all_documents))
-            if len(all_documents) - len(valid_documents) > 0:
-                print("{} of {} documents were fetched but their abstracts were not".format(
-                    len(all_documents) - len(valid_documents), len(valid_documents)), file=sys.stderr)
-
-        print("Writing a csv of {} documents".format(len(all_documents)))
-        csv_path = make_csv_name(doc, config.get("csv_prefix"))
-        make_document_csv(all_documents, csv_path, "training_data")
-
-    #print("Loading in CSV")
     # TODO test corrections and also loading in training data
+    # TODO do we want to make sure can deduplicate across different collections? (data cleaning basically)? Probably not.
 

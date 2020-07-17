@@ -1,4 +1,6 @@
 import pickle
+
+import glob
 import yaml
 import random
 import string
@@ -30,3 +32,17 @@ def make_id() -> str:
 def split_data(data, train_percent=0.8, test_percent=0.2):
     train, test = train_test_split(data, train_size=train_percent, shuffle=True)
     return train, test
+
+def make_pdf_name(doi):
+    return doi.replace('/', '_') + '.pdf'
+
+def find_file(rootdir, filename):
+    file = glob.glob(rootdir+"/**/"+filename, recursive=True)
+    if file:
+        return file[0] # arbitrarily pick one if there's more than one of the same file
+    else:
+        return ""
+
+
+
+

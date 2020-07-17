@@ -8,7 +8,7 @@ from typing import List, Type, Union
 from dateutil import parser
 
 from api.citoid_api import get_citation_data
-from utils.general_utils import make_id, bool_partition, save_pkl, load_pkl
+from utils.general_utils import make_id, bool_partition, save_pkl, load_pkl, make_pdf_name
 
 
 class TextType(Enum):
@@ -39,16 +39,25 @@ class Publisher(Enum):
 ### Other Globalish things
 Author = namedtuple("Author", ["firstName", "lastName", "creatorType"])
 
-def make_authors(creators_list, text: str="", split_on: str="and") -> List[dict]:
+def make_authors(creators_list, text: str="", split_on: str="and", source: str=None) -> List[dict]:
     """tries to set author from JSON, else extracts author information from raw text, returns list of dicts"""
-    # Google Scholar Author info format: Hamsho, A and Tesfamarym, G and Megersa, G and Megersa, M
-    # Scopus Author info format: Asmare, Kassahun;Sibhat, Berhanu;Haile, Aynalem;Sheferaw, Desie;Aragaw, Kassaye;Abera, Mesele;Abebe, Rahmeto;Wieland, Barbara"
-    # TODO WoS Author info raw text parse:
+    # Google Scholar Author info format (string): Hamsho, A and Tesfamarym, G and Megersa, G and Megersa, M
+    # Scopus Author info format (string): Asmare, Kassahun;Sibhat, Berhanu;Haile, Aynalem;Sheferaw, Desie;Aragaw, Kassaye;Abera, Mesele;Abebe, Rahmeto;Wieland, Barbara"
+    # WOS author info format (list of strings): ["Ikeh, M. A. C.", "Obi, S. K. C.",]
+    # Pubmed is a dict with lastname: X,firstname: Y,
     if creators_list:
         return creators_list
 
     all_authors = []
-    entries = text.split(split_on) if text else []
+    if not source or source == "scopus":
+        entries = text.split(split_on) if text else []
+    elif source == "wos":
+        entries = text
+    elif source == "pubmed":
+        pass # TODO combine these in refactor
+    else:
+        logging.warning("unsupported source: {}".format(source))
+
     if not entries:
         return []
     for entry in entries:
@@ -61,6 +70,13 @@ def make_authors(creators_list, text: str="", split_on: str="and") -> List[dict]
 
         all_authors.append(Author(last, first, "author")._asdict())
 
+    return all_authors
+
+
+def make_pubmed_authors(author_json: List[dict]) -> List[dict]:
+    all_authors = []
+    for author in author_json:
+        all_authors.append(Author(author["lastname"], author["firstname"], "author")._asdict())
     return all_authors
 
 
@@ -107,13 +123,13 @@ class Document(object):
         self.language = None
 
         # extracted data
-        self.text_fields
+        self.text_fields = None
 
         assert (url or filepath or zotero_id or doi), "Need to provide a source url and/or a filepath to " \
                                                "create a Document if not already uploaded to Zotero"
 
     def __str__(self):
-        return self.title
+        return "{}, DOI: {}".format(self.reference_identifier, self.doi)
 
     def _make_our_id(self, custom_id):
         if custom_id:
@@ -124,6 +140,9 @@ class Document(object):
     def get_id(self):
         return self._id
 
+    def get_z_id(self):
+        return self.zotero_id
+
     def set_z_id(self, z_id: str):
         self.zotero_id = z_id
 
@@ -132,8 +151,23 @@ class Document(object):
         pass
 
     def set_reference_identifier(self):
-        assert(self.reference and self.year), "Cannot create identifier without reference and year being set"
-        return "{}; {}".format(self.reference, self.year)
+        self.reference_identifier = "{}; {}".format(self.reference, self.year)
+
+    def set_reference(self):
+        if len(self.authors) < 1:
+            self.reference = "Unknown"
+        else:
+            lastname =  Author._fields[1]
+            first_author = self.authors[0].get(lastname, "")
+            if len(self.authors) > 2:
+                # TODO how do I tell who the first is?
+                self.reference = "{} et al".format(first_author)
+            if len(self.authors) > 1:
+                second_author = self.authors[1].get(lastname, "")
+                self.reference = "{} & {}".format(first_author, second_author)
+            else:
+                self.reference = first_author
+
 
     def add_to_collection(self, collection_id: str):
         pass
@@ -149,6 +183,15 @@ class Document(object):
 
     def set_gold_label(self, label: Label):
         self.gold_label = label
+
+    def compare_text_fields(self, other_doc):
+        # iterate through text fields and report when they don't match
+        for tf in self.text_fields:
+            pass
+
+        # for every mismatched field (non blank), print debug to log, count as +1 error.
+        # If missing count as +1 missing.
+        return errors, extras, total
 
     @classmethod
     def set_gold_labels(cls, docs, labels: Union[List[Label] or Label], one_label=False):
@@ -220,14 +263,15 @@ class Document(object):
     def from_json(cls, filepath: str, batch: bool=False) -> List:
         """takes a JSON file, returns a Document or list of Documents"""
         source2func = {
-            "Scopus" : cls.doc_from_scopus_json,
-            "WoS" : cls.doc_from_wos_json,
+            "scopus" : cls.doc_from_scopus_json,
+            "wos" : cls.doc_from_wos_json,
+            "pubmed": cls.doc_from_pubmed_json,
             None: cls.doc_from_json
                        }
 
         with open(filepath, "r") as fin:
             data = json.load(fin)
-        doc_source = data.get("metadata").get("source")
+        doc_source = data.get("metadata").get("source").lower()
         data = data["results"] if doc_source else data # all special sources have a degree of nesting
         # skip json if no data
         if not data:
@@ -256,7 +300,6 @@ class Document(object):
               "out of {} total ({:2f}) %".format(failed, len(data), (failed/len(data))*100))
         return documents if documents else None
 
-    # TODO refactor all of these so there isn't duplicative code
     @classmethod
     def doc_from_json(cls, data: dict, basedir: str):
         """default creates a doc from json - based on Google Scholar format"""
@@ -281,6 +324,7 @@ class Document(object):
 
         return new_doc
 
+    # TODO refactor all these specific ones to prevent duplicative code :(
     @classmethod
     def doc_from_wos_json(cls, data: dict, basedir: str):
         filename = data.get("saved_pdf_name", "")
@@ -288,7 +332,7 @@ class Document(object):
         if not doi:
             logging.debug("Couldn't find a DOI for PDF: {}, skipping".format(filename))
             return None
-        filename = doi + ".pdf" # TODO change this when format fixed
+        filename = make_pdf_name(doi) if not filename else filename
         citation_data = get_citation_data(doi)  # this is a dict
         if not citation_data:
             logging.debug("Failed - PDF: {}".format(filename))
@@ -301,8 +345,10 @@ class Document(object):
         title = data.get("title")
         new_doc.title = title if title else citation_data.get("title")
         new_doc.authors = make_authors(citation_data.get("creators", []), data["authors"],
-                                       split_on=";")
+                                       source="wos")
         new_doc.set_info_from_citation(citation_data)
+
+        return new_doc
 
     @classmethod
     def doc_from_scopus_json(cls, data: dict, basedir: str):
@@ -311,7 +357,7 @@ class Document(object):
         if not doi:
             logging.debug("Couldn't find a DOI for PDF: {}, skipping".format(filename))
             return None
-        filename = doi + ".pdf"  # TODO fix this later
+        filename = make_pdf_name(doi) if not filename else filename
         citation_data = get_citation_data(doi)  # this is a dict
         if not citation_data:
             logging.debug("Failed - PDF: {}".format(filename))
@@ -324,7 +370,30 @@ class Document(object):
         new_doc.title = data.get("title")
         new_doc.abstract = data.get("description")
         new_doc.authors = make_authors(citation_data.get("creators", []), data["author_names"],
-                                       split_on=";")
+                                       split_on=";", source="scopus")
+        new_doc.set_info_from_citation(citation_data)
+
+        return new_doc
+
+    @classmethod
+    def doc_from_pubmed_json(cls, data: dict, basedir: str):
+        filename = data.get("saved_pdf_name", "")
+        doi = data.get("doi")
+        if not doi:
+            logging.debug("Couldn't find a DOI for PDF: {}, skipping".format(filename))
+            return None
+        filename = make_pdf_name(doi) if not filename else filename
+        citation_data = get_citation_data(doi)  # this is a dict
+        if not citation_data:
+            logging.debug("Failed - PDF: {}".format(filename))
+            return None
+        filepath = os.path.join(basedir, filename) if filename else ""
+
+        new_doc = Document(source=citation_data.get("itemType", ""),
+                           file_type=FileType.pdf, filepath=filepath)
+        # populate fields
+        new_doc.title, new_doc.abstract = data.get("title"), data.get("abstract")
+        new_doc.authors = make_pubmed_authors(data["authors"])
         new_doc.set_info_from_citation(citation_data)
 
         return new_doc
@@ -335,6 +404,10 @@ class Document(object):
         self.doi = citation_data.get("DOI", "")
         self.issn = citation_data.get("ISSN", "")
         self.language = citation_data.get("language", "")  # ISO code
+        date = citation_data.get("date")
+        self.year = date.split("-")[0] if date else ""
+        self.set_reference()
+        self.set_reference_identifier()
 
 
 class TextField(object):
