@@ -29,15 +29,16 @@ def make_id() -> str:
     alphanumeric = string.ascii_lowercase + string.digits
     return ''.join(random.choices(alphanumeric, k=id_length))
 
-def split_data(data, train_percent=0.8, test_percent=0.2):
+def split_data(data, train_percent=0.85, test_percent=0.15):
     train, test = train_test_split(data, train_size=train_percent, shuffle=True)
     return train, test
 
 def make_pdf_name(doi):
     return doi.replace('/', '_') + '.pdf'
 
+#TODO remove rootdir
 def find_file(rootdir, filename):
-    file = glob.glob(rootdir+"/**/"+filename, recursive=True)
+    file = glob.glob("**/"+filename, recursive=True)
     if file:
         return file[0] # arbitrarily pick one if there's more than one of the same file
     else:

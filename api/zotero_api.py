@@ -27,17 +27,22 @@ def get_all_collections(z_library) -> List[Dict]:
 def get_collection_IDs(collections: List[Dict]) -> List[str]:
     return [col["key"] for col in collections]
 
-def get_collection_names_and_IDs(collections: List[Dict]) -> Dict:
+def get_collection_names_and_IDs(collections: List[Dict], z_library) -> Dict:
     name2id = {}
-    for item in collections:
-        name2id[item["data"]["name"]] = item["key"]
+    for col in collections:
+        name = col["data"]["name"]
+        parent = col["data"]["parentCollection"]
+        if parent:
+            # prepend parent name. Assume only one degree of nesting
+            parent_name = z_library.collection(parent)["data"]["name"]
+            name = parent_name + "_" + name
+        name2id[name] = col["key"]
     return name2id
 
 def create_collections(z_library, names:List[str]):
     collections = []
     for name in names:
         collections.append({"name": name})
-
     z_library.create_collections(collections)
 
 ### Documents
@@ -60,37 +65,48 @@ def upload_attachments(z_library, docs: List[Document]):
     for doc in docs:
         if not doc.filepath:
             continue
-        response = z_library.attachment_simple(doc.filepath, parentid=doc.get_z_id())
+        response = z_library.attachment_simple([doc.filepath], doc.get_z_id())
         # only need to do something with response if also want to store attachment id
+        # TODO parse responses
 
 def create_new_docs(z_library, docs: List[Document], add_attachments=False, collection_ids=None):
+    ZOTERO_MAX = 50
     print("Creating {} Documents in Zotero...".format(len(docs)))
     all_templates = []
     for doc in docs:
         # select a template type from z_library.item_types()
         template = z_library.item_template("journalArticle")
         # set a title
-        template["data"]["title"] = doc.title
-        template["data"]["abstract"] = doc.abstract
-        template["data"]["language"] = doc.language
-        template["data"]["creators"] = doc.authors
-        template["data"]["DOI"] = doc.doi
-        template["data"]["ISSN"] = doc.issn
-        template["data"]["url"] = doc.url
+        template["title"] = doc.title
+        template["abstractNote"] = doc.abstract
+        template["language"] = doc.language
+        template["creators"] = doc.authors
+        template["DOI"] = doc.doi
+        template["ISSN"] = doc.issn
+        template["url"] = doc.url
         if collection_ids:
-            template["data"]["collections"] = collection_ids
+            template["collections"] = collection_ids
         all_templates.append(template)
 
-    response = z_library.create_items(all_templates)
-    doc_ids = response["key"] # TODO unsure if this is correct or nested (this is the format if create one item at a time)
+    # zotero only allows max (50 at time)
+    failures = 0
+    for i in range(0,len(all_templates), ZOTERO_MAX):
+        response = z_library.create_items(all_templates[i:i+ZOTERO_MAX])
+        # set zotero IDs for all docs
+        for i, doc in enumerate(docs):
+            if str(i) in response["success"]:
+                doc.set_z_id(response["success"][str(i)])
+        failures += len(response["failed"])
 
+    print("{} new documents and {} failures".format(len(docs)-failures, failures) )
+    success_docs = list(filter(lambda x: x.zotero_id, docs))
     if add_attachments:
-        upload_attachments(z_library, docs)
+        upload_attachments(z_library, list(filter(lambda x: x.filepath, success_docs)))
 
 def update_doc_collections(z_library, doc_data: Dict, remove: Dict=None, add: Dict=None,
                            remove_all=False):
     """takes a document json and dicts of name2id for collections to add and remove, and updates in zotero"""
-    #TODO work out how to support nested collections
+    # TODO work out how to support nested collections
     # TODO add handling for keyerrors in collection names
     if remove_all: # if True, removes document from all other collections save those specified
         collections_list = []
@@ -98,7 +114,7 @@ def update_doc_collections(z_library, doc_data: Dict, remove: Dict=None, add: Di
         collections_list = [col for col in doc_data["data"]["collections"]
                             if col not in list(remove.values())]
     collections_list.extend(list(add.values()))
-    doc_data["data"]["collections"] = collections_list # TODO PICK UP HERE doc_data doesn't appear to have collections
+    doc_data["data"]["collections"] = collections_list
     z_library.update_item(doc_data)
     print("Document {} has been updated from {} collections to {}".format(
         doc_data["data"]["title"], remove.keys(), remove.keys()))

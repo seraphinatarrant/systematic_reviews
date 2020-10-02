@@ -73,12 +73,16 @@ def make_authors(creators_list, text: str="", split_on: str="and", source: str=N
     return all_authors
 
 
-def make_pubmed_authors(author_json: List[dict]) -> List[dict]:
+def make_citation_authors(author_json: List[dict], type="citation") -> List[dict]:
     all_authors = []
-    for author in author_json:
-        all_authors.append(Author(author["lastname"], author["firstname"], "author")._asdict())
-    return all_authors
+    if type == "pubmed":
+        lastname, firstname = "lastname", "firstname"
+    else:
+        lastname, firstname = "lastName", "firstName"
 
+    for author in author_json:
+        all_authors.append(Author(author.get(lastname), author.get(firstname), "author")._asdict())
+    return all_authors
 
 def get_year_from_date(date: str):
     """assume patterns are: year-mon-day or year/mon/day"""
@@ -154,7 +158,7 @@ class Document(object):
         self.reference_identifier = "{}; {}".format(self.reference, self.year)
 
     def set_reference(self):
-        if len(self.authors) < 1:
+        if not self.authors:
             self.reference = "Unknown"
         else:
             lastname =  Author._fields[1]
@@ -393,7 +397,7 @@ class Document(object):
                            file_type=FileType.pdf, filepath=filepath)
         # populate fields
         new_doc.title, new_doc.abstract = data.get("title"), data.get("abstract")
-        new_doc.authors = make_pubmed_authors(data["authors"])
+        new_doc.authors = make_citation_authors(data["authors"], type="pubmed")
         new_doc.set_info_from_citation(citation_data)
 
         return new_doc
@@ -401,6 +405,7 @@ class Document(object):
     def set_info_from_citation(self, citation_data):
         self.title = citation_data.get("title", "") if not self.title else self.title
         self.abstract = citation_data.get("abstractNote", "") if not self.abstract else self.abstract
+        self.authors = make_citation_authors(citation_data.get("creators"))
         self.doi = citation_data.get("DOI", "")
         self.issn = citation_data.get("ISSN", "")
         self.language = citation_data.get("language", "")  # ISO code

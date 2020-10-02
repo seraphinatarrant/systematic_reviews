@@ -27,13 +27,14 @@ def format_data(items: List[Document], has_labels=True) -> Tuple[List[str], List
 
     return text_data, label_data
 
-def print_prediction_accuracy(predictions: List[int], gold_labels: List[int]):
+def print_prediction_accuracy(predictions: List[int], gold_labels: List[int], conf_thresh=False):
     accuracy = np.mean(predictions == gold_labels)
+    matrix_labels = [l.name for l in Label]+[] if not conf_thresh else [l.name for l in Label]+["below thresh"]
     logging.info("Classifier Accuracy: {}".format(accuracy))
     logging.info("-" * 89)
     logging.info("Classification Report:")
     logging.info(metrics.classification_report(gold_labels, predictions,
-                                        target_names=[l.name for l in Label]+[]))
+                                        target_names=matrix_labels))
     logging.info("Confusion Matrix:")
     logging.info(metrics.confusion_matrix(gold_labels, predictions, labels=[l.value for l in Label]))
 
@@ -141,7 +142,7 @@ class SVMClassifier(ClassifierStrategy):
         else:
             predictions = self.pipeline.predict(texts)
         if has_labels:
-            print_prediction_accuracy(predictions, labels)
+            print_prediction_accuracy(predictions, labels, conf_thresh=confidence)
         # set predicted label attributes on documents
         Document.set_predicted_labels(items, predictions)
         # return list of labels

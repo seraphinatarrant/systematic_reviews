@@ -1,11 +1,11 @@
 corpus:
   from_zotero: True # if True uses zotero collections, and expects a zotero config
   zotero_config: "config/zotero.yaml"
-  save_loc: "corpus.pkl"
+  save_loc: "ethiopia_corpus.pkl"
   test_labels: True # whether or not the test data has labels (for printing accuracy on predictions)
   # If loading from existing Corpus or crawl JSON
   #load_saved: "corpus.pkl"
-  # PDFs referenced by JSON are assumed in same directory
+  # PDFs referenced by JSON are assumed in same directory. If there is more than one json, pipe delimit them |
   include: "PDFs/include/include_new.json"
   exclude: "PDFs/exclude/exclude_new.json"
 model:
