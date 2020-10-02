@@ -4,9 +4,10 @@ import glob
 import yaml
 import random
 import string
-from typing import Tuple, List, Dict
+from typing import Dict
 from itertools import filterfalse
 from sklearn.model_selection import train_test_split
+
 
 def read_yaml_config(config_file: str) -> Dict:
     return yaml.load(open(config_file), Loader=yaml.FullLoader)
