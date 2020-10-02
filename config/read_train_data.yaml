@@ -1,0 +1,10 @@
+mode: write # mode is either read or write. Write is where info is written to a csv in order to use it for humans to label, Read is where we read the results back
+
+write_mode:
+  #input_json: PDFs/include/include_new.json # if just want to read a new json file
+  input_dir: PDFs/new_training_data_v2/wos_Tanzania/ # if want to read all json within a directory and subdirectories
+  csv_prefix: training_data_v2 # if want to specify the prefix for the csv. If absent will co-name with the json file being read in
+  require_abstracts: False # if set to True, skips
+
+#read_mode:
+#  csv_path: PDFs/new_training_data/Ethiopia_scopus_complete.csv
