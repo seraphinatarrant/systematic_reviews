@@ -128,8 +128,8 @@ class SVMClassifier(ClassifierStrategy):
             self.classify_documents(test_items, has_labels=True)
 
     def classify_documents(self, items: List[Document], has_labels=False,
-                           confidence=False, threshold: float=None) -> List[Label]:
-        """classifies documents. If has labels, will also print accuracy"""
+                           confidence=False, threshold: float=None):
+        """classifies documents. If has labels, will also print accuracy. Returns a numpy array of label integers"""
         # make training data -> should work if gold labels are not set, that should be a boolean in the function
         texts, labels = format_data(items, has_labels)
         # classify
