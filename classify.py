@@ -6,12 +6,14 @@ from datetime import datetime
 
 import os
 
+import numpy as np
+
 from classifiers import ClassifierStrategy, SVMClassifier
 from library_collections.document import Document, Label
 from library_collections.lib_collection import Collection
 from utils.corpus import Corpus
 from utils.general_utils import read_yaml_config, split_data, load_pkl
-from api.zotero_api import auth_zotero_library, remove_duplicates
+from api.zotero_api import auth_zotero_library
 
 
 def setup_argparse():
@@ -46,7 +48,7 @@ if __name__ == "__main__":
     ### Validation
     if not args.train:
         assert config["model"].get("pretrained", False), "if not training a new classifier, require a pretrained one to be specified. Did you mean to use the arg --train?"
-
+        classifier = load_pkl(config["model"].get("pretrained"))
 
     if config["corpus"].get("load_saved"):
         logging.info("Loading pre-saved corpus...")
@@ -74,21 +76,24 @@ if __name__ == "__main__":
             #all_docs = Document.filter_fields(all_docs, [Document.gold_label, Document.abstract])
             all_docs = Document.filter_gold_labels(all_docs)
             all_docs = Document.filter_failed_parses(all_docs)
+            train_docs, test_docs = split_data(all_docs)
+        else:
+            train_docs, test_docs = [], all_docs
 
-
-        train_docs, test_docs = split_data(all_docs)
         corpus = Corpus(train_docs=train_docs, test_docs=test_docs)
         save_loc = config["corpus"].get(SVMClassifier.SAVE_LOC_KEY, "corpus.pkl")
         corpus.save(save_loc)
 
     logging.info("{} Training and {} Test Documents".format(len(corpus.train), len(corpus.test)))
 
-    logging.info("Reading classifier...")
-    classifier = ClassifierStrategy.from_config(config)
 
     if args.train:
         labelled_corpus = Document.filter_gold_labels(corpus.train)
         assert labelled_corpus, "cannot train a classifier without any gold labels in the corpus"
+
+        logging.info("Reading classifier...")
+        classifier = ClassifierStrategy.from_config(config)
+
         classifier.train_classifier(corpus.train)
 
     if bool(corpus.test):
@@ -99,16 +104,22 @@ if __name__ == "__main__":
                                           thresh=config.get("classify", {}).get("threshold")
                                           )
 
+        # TODO Upload predictions to Zotero (includes and excludes to relevant folders)
+
+        logging.info("Predicted {} include and {} exclude".format(np.count_nonzero(predictions==1),
+                                                           np.count_nonzero(predictions==0)))
 
         logging.debug("Printing Results:")
         for doc, label_num in zip(corpus.test, predictions):
             logging.debug("{} was given label: {}.".format(doc, Label(label_num).name))
         logging.debug("-"*89)
-        logging.debug("Printing Errors:")
-        incorrect = filterfalse(lambda d: d.gold_eq_predict, corpus.test)
-        logging.debug("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
-        for doc in incorrect:
-            logging.debug("doc: {} id: {} predicted_label: {} gold_label: {}".format(
-                doc, doc.get_id(), doc.predicted_label, doc.gold_label))
+
+        if config["corpus"].get("test_labels"):
+            logging.debug("Printing Errors:")
+            incorrect = filterfalse(lambda d: d.gold_eq_predict, corpus.test)
+            logging.debug("Ratio of incorrect/total: {}/{}".format(len(list(incorrect)), len(corpus.test)))
+            for doc in incorrect:
+                logging.debug("doc: {} id: {} predicted_label: {} gold_label: {}".format(
+                    doc, doc.get_id(), doc.predicted_label, doc.gold_label))
 
 
