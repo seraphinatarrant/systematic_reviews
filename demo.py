@@ -150,4 +150,4 @@ if __name__ == '__main__':
                 f.write(html_data)
                 f.write('\n\n')
 
-        break
+
