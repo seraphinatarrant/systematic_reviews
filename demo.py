@@ -52,6 +52,8 @@ if __name__ == '__main__':
 
     # Arg for extract
     parser.add_argument('-model', help='Path to a trained spacy NER model')
+    # Download here: https://www.dropbox.com/sh/4143h77shlovy50/AADK7hKiMCelZMg2_-bnza0Ya?dl=0
+
     args = parser.parse_args()
 
     # Search
