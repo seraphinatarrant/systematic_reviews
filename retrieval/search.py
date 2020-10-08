@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 
 from serpapi.google_scholar_search_results import GoogleScholarSearchResults  # Google Scholar
 
-with open('/home/alexander/Dropbox/sebi_information_retrieval/retrieval/serpapi_key.txt') as f:
+with open('./retrieval/serpapi_key.txt') as f:
     # Load the API key for serpapi
     GoogleScholarSearchResults.SERP_API_KEY = f.read().strip()
 
@@ -252,6 +252,8 @@ class WoS(Query):
 
                     if len(all_results) == self.max_results:
                         return all_results
+
+            return all_results
 
     def process_results(self, results):
         all_dicts = []

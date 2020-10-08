@@ -20,9 +20,6 @@ def do_query(engine, json_file, max_results, label, year_range, query, pdf_folde
     retrieval.grab.download(searcher, pdf_folder)
 
 
-engines = {'google': retrieval.GoogleScholar, 'wos': retrieval.WoS, 'scopus': retrieval.Scopus, 'pubmed': retrieval.PubMed}
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
@@ -46,7 +43,7 @@ if __name__ == '__main__':
     if args.mode == 'single':
         print(f'Submitting {args.label} query...')
 
-        engine = engines[args.engine]
+        engine = retrieval.engines[args.engine]
 
         searcher = engine(label=args.label,
                           search_phrase=args.query,

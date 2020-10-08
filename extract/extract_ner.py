@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.ERROR)
+
 import argparse
 import os
 import spacy
@@ -10,9 +13,16 @@ from pathlib import Path
 
 import pandas as pd
 
+from transformers import pipeline, BertTokenizer
+from spacy.lang.en import English
+
+from IPython.core.display import display, HTML
+import seaborn as sns
+
+
 def full_extract(model, json_data):
     '''
-    model : trained spacy NER model
+    model : trained transformer NER model
     json_data : the text extracted from a PDF via process.py
 
     Use the NER model to label entities within the text.
@@ -43,6 +53,7 @@ def full_extract(model, json_data):
 
     return full_data
 
+
 def summarise(full_data, json_data):
     '''
     Take the long format full_data dataframe and arrange it such that for each
@@ -72,6 +83,14 @@ def summarise(full_data, json_data):
     return summary
 
 
+def make_chunks(nlp, text, n=4):
+    doc = nlp(text)
+    sents = [i.text for i in doc.sents]
+    sents = [" ".join(sents[i:i + n]) for i in range(0, len(sents), n)]
+
+    return sents
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract data from papers')
     parser.add_argument('json_folder', help='Location of folder containing paper section JSONs')
@@ -80,9 +99,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    nlp = spacy.load(args.model)
+    tokenizer = BertTokenizer.from_pretrained(args.model,
+                                              do_basic_tokenize=False,
+                                              do_lower_case=False)
 
-    entities = nlp.pipe_labels['ner']
+    ner = pipeline(task='ner', framework='pt',
+                   model=args.model,
+                   tokenizer=tokenizer,
+                   grouped_entities=True)
+
+    nlp = English()
+    sentencizer = nlp.create_pipe("sentencizer")
+    nlp.add_pipe(sentencizer)
 
     os.makedirs(Path(args.output_folder).expanduser(), exist_ok=True)
 
@@ -92,13 +120,39 @@ if __name__ == '__main__':
         with open(file) as f:
             json_data = json.load(f)
 
-        full_data = full_extract(nlp, json_data)
+        text = json_data['data']['Abstract']['text']
 
-        summary = summarise(full_data, json_data)
+        sents = make_chunks(text, n=5)
 
-        csv_stem = json_data['bib_info']['saved_pdf_name'].replace('.pdf', '')
+        for sent in sents:
 
-        full_data.to_csv(f"{args.output_folder}/{csv_stem}_full_extract.csv", index=None)
+            e = ner(sent)
 
-        summary.to_csv(f"{args.output_folder}/{csv_stem}_summary_extract.csv", index=None)
+            html_data = "<div style='width:400px'>"
+
+            for t in e:
+                if t['entity_group'] == 'O':
+                    html_data += f" <span'>{t['word']}</span> "
+                else:
+                    style = f"text-decoration:underline;color:{colours[t['entity_group'][2:]]}"
+                    title = f"{t['entity_group']}  {t['score']:.5f}"
+                    html_data += f" <span style='{style}' title='{title}'>{t['word']}</span> "
+
+            html_data += "</div>"
+            display(HTML(html_data))
+
+
+
+
+
+
+        # full_data = full_extract(nlp, json_data)
+        #
+        # summary = summarise(full_data, json_data)
+        #
+        # csv_stem = json_data['bib_info']['saved_pdf_name'].replace('.pdf', '')
+        #
+        # full_data.to_csv(f"{args.output_folder}/{csv_stem}_full_extract.csv", index=None)
+        #
+        # summary.to_csv(f"{args.output_folder}/{csv_stem}_summary_extract.csv", index=None)
 

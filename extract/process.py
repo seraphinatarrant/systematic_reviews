@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import glob
 import json
 import tqdm
@@ -73,19 +74,20 @@ def process_pdf_folder(source_folder, output_folder, extract=True):
             pdf_bar.set_description_str(f'Converting PDF: {p.name}')
 
             try:
-                subprocess.check_output(['pdf2txt.py', '-o', f'{args.output_folder}/full_txt/{new_name}', file])
+                #subprocess.check_output(['pdf2txt.py', '-o', f'{output_folder}/full_txt/{new_name}', file])
+                subprocess.check_output(['python', 'C:\\Users\\Alexander\\Miniconda3\\envs\\sebi_information_retrieval\\Scripts\\pdf2txt.py', '-o', f'{output_folder}/full_txt/{new_name}', file])
             except:
-                with open(f"{args.output_folder}/failed_to_extract.log", 'a') as log:
+                with open(f"{output_folder}/failed_to_extract.log", 'a') as log:
                     log.write(f'Could not extract text from: {file}\n')
 
             pdf_bar.update(1)
 
     tqdm.tqdm.write('Extracting sections from text files...')
 
-    txt_files = glob.glob(f'{args.output_folder}/full_txt/*.txt')
+    txt_files = glob.glob(f'{output_folder}/full_txt/*.txt')
 
     # Load the regular expressions for extracting sections
-    with open('regex_dict.json', 'r') as f:
+    with open('./extract/data/regex_dict.json', 'r') as f:
         chain_dict = json.load(f)
 
     all_best = {}
@@ -96,7 +98,9 @@ def process_pdf_folder(source_folder, output_folder, extract=True):
     for file in txt_files:
         p = Path(file)
 
-        with open(file) as f:
+        print(file)
+
+        with open(file, encoding='utf8') as f:
             t = f.read()
             t = clean_text(t)
 
@@ -147,7 +151,7 @@ def process_pdf_folder(source_folder, output_folder, extract=True):
 
         json_bar.update(1)
 
-        with open(f"{args.output_folder}/sections_json/{new_name}", 'w') as f:
+        with open(f"{output_folder}/sections_json/{new_name}", 'w') as f:
             json.dump(all_data, f, indent=5)
 
 
@@ -166,7 +170,12 @@ def combine_json_and_bibinfo(source_folder, bibinfo_folder):
     source_jsons = sorted(glob.glob(f"{source_folder}/sections_json/*.json"))
     bibinfo_jsons = sorted(glob.glob(f"{bibinfo_folder}/*.json"))
 
-    assert len(source_jsons) == len(bibinfo_jsons)
+    print(source_jsons)
+    print(bibinfo_jsons)
+
+    print(len(source_jsons), len(bibinfo_jsons))
+
+    #assert len(source_jsons) == len(bibinfo_jsons)
 
     for source, bib in zip(source_jsons, bibinfo_jsons):
         with open(source) as f:
