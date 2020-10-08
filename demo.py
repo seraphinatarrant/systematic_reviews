@@ -58,23 +58,34 @@ if __name__ == '__main__':
 
     print(f'Submitting {args.label} query...')
 
+    ## Select search engine to submit query to
     engine = retrieval.engines[args.engine]
 
+
+    ## Instantiate the engine object
     searcher = engine(label=args.label,
                       search_phrase=args.query,
                       date_range=(args.start_year, args.end_year),
                       results_file=args.json_file,
                       max_results=args.max_results)
 
-    #searcher.run()
+    ## Run the search job. This will submit the query, get the results, process them.
+    ## Stores them inside the searcher object at searcher.data['results']
+    ## The searcher.data dictionary stores all the metadata
+    searcher.run()
 
-    #retrieval.download(searcher, args.pdf_folder)
+    ## Pass the completed search job to the download function
+    ## It will get the PDFs and write them to disk
+    retrieval.download(searcher, args.pdf_folder)
 
     # Process
 
-    #process.process_pdf_folder(f"{args.pdf_folder}", f"{args.pdf_folder}/pdf_to_text")
+    ## This function goes through the downloaded PDFs and extracts the sections to a text file
+    ## And also to a json file, with the individual paper sections (abstract, methods, etc.) found by regex
+    process.process_pdf_folder(f"{args.pdf_folder}", f"{args.pdf_folder}/pdf_to_text")
 
-    #process.combine_json_and_bibinfo(f"{args.pdf_folder}/pdf_to_text", f"{args.pdf_folder}")
+    ## This function then adds meta data (from original bibinfo files) to the json files
+    process.combine_json_and_bibinfo(f"{args.pdf_folder}/pdf_to_text", f"{args.pdf_folder}")
 
     # Extraction
 
@@ -104,7 +115,7 @@ if __name__ == '__main__':
         except:
             continue
 
-        text = "We tested 700 donkeys and 723 argabos in the Trayafag region of Armapia. The Amalakar Test was used to detect clinkora antibodies. The study ran from October 2018 to Septmeber 2019."
+        # text = "We tested 700 donkeys and 723 argabos in the Trayafag region of Armapia. The Amalakar Test was used to detect clinkora antibodies. The study ran from October 2018 to Septmeber 2019."
 
         sents = extract_ner.make_chunks(nlp, text, n=3)
 
@@ -133,7 +144,7 @@ if __name__ == '__main__':
             html_data += "</div><br><hr>"
 
 
-            with open(f'{args.pdf_folder}/extracted3.html', 'a', encoding='utf8') as f:
+            with open(f'{args.pdf_folder}/extracted.html', 'a', encoding='utf8') as f:
                 f.write(html_data)
                 f.write('\n\n')
 
