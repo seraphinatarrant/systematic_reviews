@@ -1,6 +1,6 @@
 auth:
-  library_id: 6213075
+  library_id: INSERT_ZOTERO_ID 
   library_type: user
-  api_key: 1xPT5POxiAkFtQ2vTNpI9dkv
+  api_key: INSERT_ZOTERO_API_KEY
 
-input_dir: ../PDFs/excluded/
+input_dir: DIRECTORY_PATH_FOR_PDFS_JSON
